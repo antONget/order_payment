@@ -134,8 +134,8 @@ async def process_simple_calendar_finish(callback: CallbackQuery, callback_data:
             file_path = "order.xlsx"  # или "folder/filename.ext"
             await callback.message.answer_document(FSInputFile(file_path))
         else:
-            await callback.message.answer_document(text=f'В период {period_start_str}-{period_finish_str} выполненных'
-                                                        f' заказов не найдено. Попробуйте изменить период')
+            await callback.message.answer(text=f'В период {period_start_str}-{period_finish_str} выполненных'
+                                               f' заказов не найдено. Попробуйте изменить период')
 
 
 @router.callback_query(F.data == 'tasks_in_progress')
