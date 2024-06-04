@@ -25,48 +25,24 @@ def keyboard_order_in_process(filter_order_status: list) -> InlineKeyboardMarkup
 
 def keyboard_change_status_order(id_order: int) -> None:
     logging.info("keyboard_change_status_order")
-    button_1 = InlineKeyboardButton(text='Согласовано время', callback_data=f'changestatus_time_{id_order}')
-    button_2 = InlineKeyboardButton(text='На объекте', callback_data=f'changestatus_object_{id_order}')
+    button_1 = InlineKeyboardButton(text='В работе', callback_data=f'changestatus_inprogress_{id_order}')
+    button_2 = InlineKeyboardButton(text='Комментарий', callback_data=f'changestatus_comment_{id_order}')
     button_3 = InlineKeyboardButton(text='Отчет', callback_data=f'changestatus_report_{id_order}')
     keyboard = InlineKeyboardMarkup(inline_keyboard=[[button_1], [button_2], [button_3]],)
     return keyboard
 
 
-def keyboard_payment(payment_id: int) -> None:
+def keyboard_payment(payment_url: str, payment_id: int) -> None:
     logging.info("keyboard_select_period_sales")
-    button_1 = InlineKeyboardButton(text='Оплатить', callback_data=f'payment_{payment_id}')
-    keyboard = InlineKeyboardMarkup(inline_keyboard=[[button_1]],)
+    button_1 = InlineKeyboardButton(text='Проверить', callback_data=f'payment_{payment_id}')
+    button_2 = InlineKeyboardButton(text='Оплатить', url=f'{payment_url}')
+    keyboard = InlineKeyboardMarkup(inline_keyboard=[[button_2], [button_1]],)
     return keyboard
 
-def keyboard_select_period_sales_new() -> None:
+
+def keyboard_comment() -> None:
     logging.info("keyboard_select_period_sales")
-    button_1 = InlineKeyboardButton(text='Сегодня', callback_data='salesperiod_1')
-    button_2 = InlineKeyboardButton(text='Календарь', callback_data='salesperiod_calendar')
-    keyboard = InlineKeyboardMarkup(inline_keyboard=[[button_1], [button_2]],)
-    return keyboard
-
-def keyboard_select_scale_sales() -> None:
-    logging.info("keyboard_select_scale_sales")
-    button_1 = InlineKeyboardButton(text='Менеджер', callback_data='salesmanager')
-    button_2 = InlineKeyboardButton(text='Компания', callback_data='salescompany')
-    keyboard = InlineKeyboardMarkup(inline_keyboard=[[button_1], [button_2]],)
-    return keyboard
-
-
-def keyboards_list_product_sales(list_manager: list):
-    logging.info("keyboards_list_product_sales")
-    kb_builder = InlineKeyboardBuilder()
-    buttons = []
-    for i, manager in enumerate(list_manager):
-        callback = f'salesmanager#{manager[1]}'
-        buttons.append(InlineKeyboardButton(
-            text=manager[1],
-            callback_data=callback))
-    kb_builder.row(*buttons, width=1)
-    return kb_builder.as_markup()
-
-def keyboard_get_exel() -> None:
-    logging.info("keyboard_select_scale_sales")
-    button_1 = InlineKeyboardButton(text='Выгрузить отчет Excel', callback_data='exel')
-    keyboard = InlineKeyboardMarkup(inline_keyboard=[[button_1],], )
+    button_1 = InlineKeyboardButton(text='Добавить', callback_data=f'comment_add')
+    button_2 = InlineKeyboardButton(text='Отменить', url=f'comment_cancel')
+    keyboard = InlineKeyboardMarkup(inline_keyboard=[[button_2], [button_1]],)
     return keyboard

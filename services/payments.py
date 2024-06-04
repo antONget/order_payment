@@ -2,8 +2,8 @@ import yookassa
 from yookassa import Payment
 import uuid
 
-YOOKASSA_KEY='381764678:TEST:86546'
-YOOKASSA_ID=506751
+YOOKASSA_KEY='test_GZFeuwAegTZZELibiDPPCEXjBnbAzd7-jFSDaQkos00'
+YOOKASSA_ID='396590'
 yookassa.Configuration.account_id = YOOKASSA_ID
 yookassa.Configuration.secret_key = YOOKASSA_KEY
 

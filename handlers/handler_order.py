@@ -6,11 +6,11 @@ from aiogram.filters import StateFilter
 from aiogram.filters.callback_data import CallbackData
 import aiogram_calendar
 
-from module.data_base import get_info_user, get_list_order_id, set_status_order, set_report_order, set_amount_order
+from module.data_base import get_info_user, get_list_order_id, set_status_order, set_report_order, set_amount_order, get_order_id, get_list_order
 from keyboards.keyboard_order import keyboard_order_in_process, keyboard_order, keyboard_change_status_order, \
-    keyboard_payment
+    keyboard_payment, keyboard_comment
 from services.stat_exel import list_sales_to_exel
-# from services.payments import create_payment
+from services.payments import create_payment, check_payment
 
 from config_data.config import Config, load_config
 
@@ -26,6 +26,7 @@ config: Config = load_config()
 class Tasks(StatesGroup):
     period_start = State()
     period_finish = State()
+    comment = State()
     report = State()
     amount = State()
 
@@ -34,6 +35,12 @@ user_dict = {}
 
 
 def get_telegram_user(user_id, bot_token):
+    """
+    Проверка возможности отправки сообщения, на случай если пользователь заблокировал бота
+    :param user_id:
+    :param bot_token:
+    :return:
+    """
     url = f'https://api.telegram.org/bot{bot_token}/getChat'
     data = {'chat_id': user_id}
     response = requests.post(url, data=data)
@@ -140,22 +147,47 @@ async def process_simple_calendar_finish(callback: CallbackQuery, callback_data:
 
 @router.callback_query(F.data == 'tasks_in_progress')
 async def process_buttons_press_start(callback: CallbackQuery):
+    """
+    Получение списка не завершенных исполнителем заявок
+    :param callback:
+    :return:
+    """
     logging.info(f'process_buttons_press_start: {callback.message.chat.id}')
+    list_super_admin = config.tg_bot.admin_ids.split(',')
+    if callback.message.chat.id in map(int, list_super_admin):
+        list_order = get_list_order()
+        # фильтруем полученный список заявок
+        filter_order_status_admin = []
+        for order in list_order:
+            if not order[7] == 'complete':
+                filter_order_status_admin.append(order)
+        if len(filter_order_status_admin):
+            list_sales_to_exel(list_orders=filter_order_status_admin)
+            file_path = "order.xlsx"  # или "folder/filename.ext"
+            await callback.message.answer_document(FSInputFile(file_path))
+        else:
+            await callback.message.answer(text=f'Заказы не найдены')
+        return
+    # получение списка заявок пользователя
     list_order_id = get_list_order_id(id_user=callback.message.chat.id)
+    # фильтруем полученный список заявок
     filter_order_status = []
     for order in list_order_id:
-        if not order[6] == 'report':
+        if not order[7] == 'complete':
             filter_order_status.append(order)
+    # если есть завершенные заявки
     if len(filter_order_status):
         text = f'Для изменения статуса заявки выберите нужную заявку!\n' \
                f'У вас в работе:\n'
         for order in filter_order_status:
             text += f'<b>Заявка № {order[0]}.</b>\n' \
-                    f'Описание: {order[2]}\n' \
-                    f'Контакты: {order[3]}\n'
+                    f'Описание: {order[3]}\n' \
+                    f'Контакты: {order[4]}\n'
         await callback.message.answer(text=f'{text}',
                                       reply_markup=keyboard_order_in_process(filter_order_status=filter_order_status),
                                       parse_mode='html')
+    else:
+        await callback.message.answer(text='Завершенных заявок не найдено')
 
 
 @router.callback_query(F.data.startswith('processorder'))
@@ -172,7 +204,7 @@ async def process_order_change_status(callback: CallbackQuery, bot: Bot, state: 
     id_order = int(callback.data.split('_')[2])
     change_status = callback.data.split('_')[1]
     await state.update_data(report_id_order=id_order)
-    if change_status == 'time':
+    if change_status == 'inprogress':
         set_status_order(id_order=id_order, status=change_status)
         await callback.answer(text=f'Статус заказа № {id_order} обновлен', show_alert=True)
         # производим рассылку супер админам
@@ -184,19 +216,34 @@ async def process_order_change_status(callback: CallbackQuery, bot: Bot, state: 
                 await bot.send_message(chat_id=int(id_superadmin),
                                        text=f'Пользователь {callback.from_user.username} изменил статус'
                                             f' заявки № {id_order} на "Согласовано время"')
-    elif change_status == 'object':
-        set_status_order(id_order=id_order, status=change_status)
-        await callback.answer(text=f'Статус заказа № {id_order} обновлен', show_alert=True)
-        # производим рассылку супер админам
-        list_super_admin = config.tg_bot.admin_ids.split(',')
-        for id_superadmin in list_super_admin:
-            result = get_telegram_user(user_id=int(id_superadmin),
-                                       bot_token=config.tg_bot.token)
-            if 'result' in result:
-                await bot.send_message(chat_id=int(id_superadmin),
-                                       text=f'Пользователь {callback.from_user.username} изменил статус'
-                                            f' заявки № {id_order} на "На объекте"')
-    if change_status == 'report':
+        info_order = get_order_id(id_order=id_order)
+        result = get_telegram_user(user_id=info_order[2],
+                                   bot_token=config.tg_bot.token)
+        if 'result' in result and info_order[2] not in map(int, list_super_admin):
+            await bot.send_message(chat_id=info_order[2],
+                                   text=f'Пользователь {callback.from_user.username} изменил статус'
+                                        f' заявки № {id_order} на "Согласовано время"')
+    elif change_status == 'comment':
+        # set_status_order(id_order=id_order, status=change_status)
+        await callback.message.answer(text=f'Пришлите комментарий для заказа № {id_order}')
+        await state.set_state(Tasks.comment)
+        # # производим рассылку супер админам
+        # list_super_admin = config.tg_bot.admin_ids.split(',')
+        # for id_superadmin in list_super_admin:
+        #     result = get_telegram_user(user_id=int(id_superadmin),
+        #                                bot_token=config.tg_bot.token)
+        #     if 'result' in result:
+        #         await bot.send_message(chat_id=int(id_superadmin),
+        #                                text=f'Пользователь {callback.from_user.username} изменил статус'
+        #                                     f' заявки № {id_order} на "На объекте"')
+        # info_order = get_order_id(id_order=id_order)
+        # result = get_telegram_user(user_id=info_order[2],
+        #                            bot_token=config.tg_bot.token)
+        # if 'result' in result and info_order[2] not in map(int, list_super_admin):
+        #     await bot.send_message(chat_id=info_order[2],
+        #                            text=f'Пользователь {callback.from_user.username} изменил статус'
+        #                                 f' заявки № {id_order} на "На объекте"')
+    elif change_status == 'report':
         set_status_order(id_order=id_order, status='preview_report')
         await callback.message.answer(text=f'Пришлите краткий отчет о выполнении заказа № {id_order}')
         # производим рассылку супер админам
@@ -208,11 +255,70 @@ async def process_order_change_status(callback: CallbackQuery, bot: Bot, state: 
                 await bot.send_message(chat_id=int(id_superadmin),
                                        text=f'Пользователь {callback.from_user.username} выполнил'
                                             f' заявку № {id_order} и готов представить отчет')
+        info_order = get_order_id(id_order=id_order)
+        result = get_telegram_user(user_id=info_order[2],
+                                   bot_token=config.tg_bot.token)
+        if 'result' in result and info_order[2] not in map(int, list_super_admin):
+            await bot.send_message(chat_id=info_order[2],
+                                   text=f'Пользователь {callback.from_user.username} выполнил'
+                                        f' заявку № {id_order} и готов представить отчет')
         await state.set_state(Tasks.report)
+
+
+@router.message(F.text, StateFilter(Tasks.comment))
+async def process_get_comment_order(message: Message, state: FSMContext):
+    logging.info(f'process_get_comment_order: {message.chat.id}')
+    comment = message.text
+    await state.update_data(comment=comment)
+    user_dict[message.chat.id] = await state.get_data()
+    id_order = user_dict[message.chat.id]['report_id_order']
+    await message.answer(text=f'Добавить комментарий:\n{comment}\nк заказу № {id_order}',
+                         reply_markup=keyboard_comment())
+
+
+@router.callback_query(F.data == 'comment_add')
+async def process_order_comment_add(callback: CallbackQuery, bot: Bot, state: FSMContext):
+    logging.info(f'process_order_comment_add: {callback.message.chat.id}')
+    user_dict[callback.message.chat.id] = await state.get_data()
+    id_order = user_dict[callback.message.chat.id]['report_id_order']
+    comment = user_dict[callback.message.chat.id]['comment']
+    await callback.answer(text=f'Комментарий к заказу № {id_order} добавлен')
+    list_super_admin = config.tg_bot.admin_ids.split(',')
+    for id_superadmin in list_super_admin:
+        result = get_telegram_user(user_id=int(id_superadmin),
+                                   bot_token=config.tg_bot.token)
+        if 'result' in result:
+            await bot.send_message(chat_id=int(id_superadmin),
+                                   text=f'К заказу № {id_order} добавлен комментарий\n'
+                                        f'{comment}')
+    info_order = get_order_id(id_order=id_order)
+    result = get_telegram_user(user_id=info_order[2],
+                               bot_token=config.tg_bot.token)
+    if 'result' in result and info_order[2] not in map(int, list_super_admin):
+        await bot.send_message(chat_id=info_order[2],
+                               text=f'К заказу № {id_order} добавлен комментарий\n'
+                                    f'{comment}')
+    await state.set_state(default_state)
+
+
+@router.callback_query(F.data == 'comment_cancel')
+async def process_order_comment_cancel(callback: CallbackQuery, state: FSMContext):
+    logging.info(f'process_order_comment_cancel: {callback.message.chat.id}')
+    user_dict[callback.message.chat.id] = await state.get_data()
+    id_order = user_dict[callback.message.chat.id]['report_id_order']
+    await callback.answer(text=f'Добавление комментария к заказу № {id_order} отменено')
+    await state.set_state(default_state)
 
 
 @router.message(F.text, StateFilter(Tasks.report))
 async def process_get_report_order(message: Message, bot: Bot, state: FSMContext):
+    """
+    Ожидание ввода отчета от пользователя
+    :param message:
+    :param bot:
+    :param state:
+    :return:
+    """
     logging.info(f'process_get_report_order: {message.chat.id}')
     report = message.text
     user_dict[message.chat.id] = await state.get_data()
@@ -228,14 +334,23 @@ async def process_get_report_order(message: Message, bot: Bot, state: FSMContext
                                    text=f'Пользователь {message.from_user.username} отправил отчет о выполнении'
                                         f' заявки № {id_order}:\n'
                                         f'{report}')
-    # await message.answer(text='Пришлите стоимость выполненной заявки')
-    # await state.set_state(Tasks.amount)
+    info_order = get_order_id(id_order=id_order)
+    result = get_telegram_user(user_id=info_order[2],
+                               bot_token=config.tg_bot.token)
+    if 'result' in result and info_order[2] not in map(int, list_super_admin):
+        await bot.send_message(chat_id=info_order[2],
+                               text=f'Пользователь {message.from_user.username} отправил отчет о выполнении'
+                                    f' заявки № {id_order}:\n'
+                                    f'{report}')
+    await message.answer(text='Пришлите стоимость выполненной заявки')
+    await state.set_state(Tasks.amount)
 
 
 @router.message(F.text, StateFilter(Tasks.amount), lambda message: message.text.isdigit())
 async def process_get_amount_order(message: Message, bot: Bot, state: FSMContext):
     logging.info(f'process_get_amount_order: {message.chat.id}')
     amount = int(message.text)
+    user_dict[message.chat.id] = await state.get_data()
     id_order = user_dict[message.chat.id]['report_id_order']
     set_amount_order(id_order=id_order, amount=amount)
     # производим рассылку супер админам
@@ -247,14 +362,31 @@ async def process_get_amount_order(message: Message, bot: Bot, state: FSMContext
             await bot.send_message(chat_id=int(id_superadmin),
                                    text=f'Пользователь {message.from_user.username} выполнил'
                                         f' заявку № {id_order} на сумму {amount}')
+    info_order = get_order_id(id_order=id_order)
+    result = get_telegram_user(user_id=info_order[2],
+                               bot_token=config.tg_bot.token)
+    if 'result' in result and info_order[2] not in map(int, list_super_admin):
+        await bot.send_message(chat_id=info_order[2],
+                               text=f'Пользователь {message.from_user.username} выполнил'
+                                    f' заявку № {id_order} на сумму {amount}')
     price_amount = int(amount/2)
     PRICE = f'{price_amount}.00'
     payment_url, payment_id = create_payment(amount=PRICE, chat_id=message.chat.id)
     await message.answer(text=f'Произведите оплату за полученную заявку в размере {price_amount}',
-                         reply_markup=keyboard_payment())
+                         reply_markup=keyboard_payment(payment_url=payment_url,
+                                                       payment_id=payment_id))
+
+
+@router.callback_query(F.data == 'check')
+async def check_handler(callback: CallbackQuery):
+    logging.info(f'error_amount_order: {callback.message.chat.id}')
+    result = check_payment()
+    print(result)
 
 
 @router.message(StateFilter(Tasks.amount))
 async def error_amount_order(message: Message):
     logging.info(f'error_amount_order: {message.chat.id}')
     await message.answer(text='Некорректно указана сумма заказа, повторите ввод!')
+
+

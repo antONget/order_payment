@@ -7,8 +7,9 @@ import logging
 def keyboards_user() -> ReplyKeyboardMarkup:
     logging.info("keyboards_user")
     button_1 = KeyboardButton(text='Заявки')
+    button_3 = KeyboardButton(text='Создать заявку')
     keyboard = ReplyKeyboardMarkup(
-        keyboard=[[button_1]],
+        keyboard=[[button_1], [button_3]],
         resize_keyboard=True
     )
     return keyboard

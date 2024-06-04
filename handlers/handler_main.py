@@ -23,7 +23,7 @@ async def s(message: Message) -> None:
     create_table_users()
     add_admin(id_admin=message.chat.id, user_name=message.from_user.username)
     await message.answer(text=f"Привет, {message.from_user.first_name} 👋\n"
-                              f"Вы супер-администратор проекта, вы можете добавить/удалить партнеров, "
+                              f"Вы супер-администратор проекта, вы можете добавить/удалить Категории, "
                               f"смотреть отчеты и создавать заявки.",
                          reply_markup=keyboards_super_admin())
 

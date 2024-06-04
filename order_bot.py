@@ -35,7 +35,7 @@ async def main():
 
     # Регистрируем router в диспетчере
     dp.include_router(handler_main.router)
-    dp.include_router(handler_edit_list_partner.router)
+    # dp.include_router(handler_edit_list_partner.router)
     dp.include_router(handler_category.router)
     dp.include_router(handler_create_order.router)
     dp.include_router(handler_order.router)

@@ -4,22 +4,30 @@ from aiogram.fsm.context import FSMContext
 from aiogram.filters import StateFilter
 from aiogram.fsm.state import State, StatesGroup, default_state
 import logging
-import asyncio
-from module.data_base import create_table_category, add_category, get_list_category, delete_category
+import requests
+from module.data_base import create_table_category, add_category, get_list_category, delete_category, get_list_users
 from keyboards.keyboard_category import keyboards_del_category, keyboard_delete_category, keyboard_edit_list_category
-from filter.admin_filter import check_admin
-
+from filter.admin_filter import check_super_admin
+from config_data.config import Config, load_config
 
 router = Router()
 user_dict = {}
+config: Config = load_config()
 
 
 class Category(StatesGroup):
     title_category = State()
 
 
+def get_telegram_user(user_id, bot_token):
+    url = f'https://api.telegram.org/bot{bot_token}/getChat'
+    data = {'chat_id': user_id}
+    response = requests.post(url, data=data)
+    return response.json()
+
+
 # КАТЕГОРИЯ
-@router.message(F.text == 'Категории', lambda message: check_admin(message.chat.id))
+@router.message(F.text == 'Категории', lambda message: check_super_admin(message.chat.id))
 async def process_category(message: Message) -> None:
     logging.info(f'process_category: {message.chat.id}')
     create_table_category()
@@ -27,7 +35,7 @@ async def process_category(message: Message) -> None:
                          reply_markup=keyboard_edit_list_category())
 
 
-# добавить менеджера
+# добавить категорию
 @router.callback_query(F.data == 'add_category')
 async def process_add_category(callback: CallbackQuery, state: FSMContext) -> None:
     logging.info(f'process_add_category: {callback.message.chat.id}')
@@ -36,10 +44,26 @@ async def process_add_category(callback: CallbackQuery, state: FSMContext) -> No
 
 
 @router.message(F.text, StateFilter(Category.title_category))
-async def process_get_title_category(message: Message, state: FSMContext) -> None:
+async def process_get_title_category(message: Message, state: FSMContext, bot: Bot) -> None:
     logging.info(f'process_get_title_category: {message.chat.id}')
     add_category(category=message.text)
     await message.answer(text="Новая категория добавлена в базу")
+    # получаем список пользователей для рассылки
+    #             id INTEGER PRIMARY KEY,
+    #             telegram_id INTEGER,
+    #             username TEXT,
+    #             is_admin INTEGER,
+    #             list_category TEXT,
+    #             rating INTEGER
+    list_mailer_category = get_list_users()
+    print(list_mailer_category)
+    list_super_admin = config.tg_bot.admin_ids.split(',')
+    for user in list_mailer_category:
+        if user[0] not in map(int, list_super_admin):
+            result = get_telegram_user(user_id=user[1], bot_token=config.tg_bot.token)
+            if 'result' in result:
+                await bot.send_message(chat_id=user[1],
+                                       text=f'Создана новая категория {message.text}')
     await state.set_state(default_state)
 
 

@@ -10,7 +10,8 @@ from filter.admin_filter import check_admin
 from config_data.config import Config, load_config
 from keyboards.keyboards_create_order import keyboards_set_category, keyboard_mailer_order, keyboard_get_order
 from module.data_base import get_list_order, get_list_notadmins_mailer, get_list_category, get_title_category,\
-    create_table_order, add_order, create_table_category, set_mailer_order, set_status_order, set_user_order, get_order_id
+    create_table_order, add_order, create_table_category, set_mailer_order, set_status_order, set_user_order,\
+    get_order_id, get_list_users, get_list_order_id_not_complete, get_info_user, set_id_cancel_order
 
 import logging
 import requests
@@ -35,7 +36,7 @@ def get_telegram_user(user_id, bot_token):
     return response.json()
 
 
-@router.message(F.text == 'Создать заявку', lambda message: check_admin(message.chat.id))
+@router.message(F.text == 'Создать заявку')
 async def process_create_order(message: Message, state: FSMContext) -> None:
     """
     Создание заявки
@@ -131,10 +132,11 @@ async def process_setcategory(callback: CallbackQuery, state: FSMContext) -> Non
     await state.update_data(title_category=int(callback.data.split('_')[1]))
     await state.set_state(default_state)
     list_order = get_list_order()
+    print(list_order)
     if len(list_order) == 0:
-        number_order = 0
+        number_order = 1
     else:
-        number_order = list_order[0][0]
+        number_order = list_order[-1][0] + 1
     await callback.message.edit_text(text=f'Заявка № {number_order}.\n'
                                           f'Категория: {title_category}\n'
                                           f'Описание: {description_order}\n'
@@ -165,7 +167,7 @@ async def order_mailer(callback: CallbackQuery, state: FSMContext, bot: Bot) -> 
     :param state:
     :return:
     """
-    logging.info(f'process_forward: {callback.message.chat.id}')
+    logging.info(f'order_mailer: {callback.message.chat.id}')
     await bot.delete_message(chat_id=callback.message.chat.id,
                              message_id=callback.message.message_id)
     current_date = datetime.now()
@@ -175,6 +177,7 @@ async def order_mailer(callback: CallbackQuery, state: FSMContext, bot: Bot) -> 
     contact_order = user_dict[callback.message.chat.id]['contact_order']
     title_category = user_dict[callback.message.chat.id]['title_category']
     add_order(time_order=time_game,
+              id_creator=callback.message.chat.id,
               description_order=description_order,
               contact_order=contact_order,
               category=title_category,
@@ -182,50 +185,78 @@ async def order_mailer(callback: CallbackQuery, state: FSMContext, bot: Bot) -> 
               status='minute',
               id_user=0,
               amount=0,
-              report='none')
+              report='none',
+              cancel_id='0,0',
+              comment='none')
     await process_mailer(bot=bot)
 
 
 async def process_mailer(bot: Bot):
     # id INTEGER, telegram_id INTEGER, username TEXT, is_admin INTEGER, list_category TEXT, rating INTEGER
     # получаем список пользователей для рассылки
-    list_mailer = get_list_notadmins_mailer()
+    #             id INTEGER PRIMARY KEY,
+    #             telegram_id INTEGER,
+    #             username TEXT,
+    #             is_admin INTEGER,
+    #             list_category TEXT,
+    #             rating INTEGER
+    list_mailer = get_list_users()
     # сортируем его по рейтингу
     list_sorted_user = sorted(list_mailer, key=lambda mailer: mailer[5], reverse=True)
     print(list_sorted_user)
-    # id INTEGER, time_order TEXT, description_order TEXT, contact_order TEXT, category INTEGER, mailer_order TEXT, status TEXT, id_user, INTEGER, amount INTEGER
     # получаем список заявок
     list_order = get_list_order()
     # 1 - проходим по списку заявок
     for order in list_order:
         # если заявка находится на стадии досыльных сообщений пользователю то не запускаем рассылку
-        if order[6] == 'one_minute':
+        if order[7] == 'one_minute':
             continue
-        # если исполнителен не определен, то продолжаем рассылку
+        # если исполнителен для заявки не определен, то продолжаем рассылку
+        # id INTEGER PRIMARY KEY,
+        #             time_order TEXT,
+        #             id_creator INTEGER,
+        #             description_order TEXT,
+        #             contact_order TEXT,
+        #             category INTEGER,
+        #             mailer_order TEXT,
+        #             status TEXT,
+        #             id_user INTEGER,
+        #             amount INTEGER,
+        #             report TEXT
         info_order = get_order_id(id_order=order[0])
-        if info_order[7] == 0:
+        if info_order[8] == 0:
+            print("info_order:", info_order)
             # получаем список пользователей кому уже была произведена рассылка
-            mailer_order = order[5]
+            mailer_order = order[6]
             if mailer_order == 'none':
                 mailer_list = []
             else:
                 if ',' in mailer_order:
-                    mailer_list = map(int, mailer_order.split(','))
+                    mailer_list = list(map(int, mailer_order.split(',')))
                 else:
                     mailer_list = [int(mailer_order)]
             # проходим по отсортированному по рейтингу в порядке его убывания списку пользователей
             for user in list_sorted_user:
+                # проверяем количество заявок в работе и что получатель не супер-админ
+                list_order_id_not_complete = get_list_order_id_not_complete(id_user=user[1])
+                list_super_admin = config.tg_bot.admin_ids.split(',')
+                if len(list_order_id_not_complete) >= 2 or user[1] in map(int, list_super_admin):
+                    print(len(list_order_id_not_complete) >= 2, user[1] in map(int, list_super_admin))
+                    continue
+                print("user", user)
                 # получаем допустимые категории для пользователя
                 categorys = user[4]
                 if categorys == '0':
                     category_list = []
                 else:
                     if ',' in categorys:
-                        category_list = map(int, categorys.split(','))
+                        category_list = list(map(int, categorys.split(',')))
                     else:
                         category_list = [int(categorys)]
+                print(f'user[0]: {user[0]} mailer_list: {mailer_list} order[4]: {order[5]} category_list: {category_list}\n\n')
                 # если пользователю еще не рассылали заявку и список его категорий допустим
-                if user[0] not in mailer_list and order[4] in category_list:
+                if user[0] not in mailer_list and order[5] in category_list:
+
                     result = get_telegram_user(user_id=user[1], bot_token=config.tg_bot.token)
                     msg1, msg2, msg3 = 0, 0, 0
                     # ПЕРВОЕ СООБЩЕНИЕ
@@ -236,8 +267,8 @@ async def process_mailer(bot: Bot):
                         msg1 = await bot.send_message(chat_id=user[1],
                                                       text=f'Поступила заявка\n'
                                                            f'Заявка № {order[0]}.\n'
-                                                           f'Категория: {order[4]}\n'
-                                                           f'Описание: {order[2]}\n',
+                                                           f'Категория: {order[5]}\n'
+                                                           f'Описание: {order[3]}\n',
                                                       reply_markup=keyboard_get_order(id_order=order[0]))
                         # обновляем список рассылки заявки
                         mailer_list.append(user[0])
@@ -252,7 +283,9 @@ async def process_mailer(bot: Bot):
                     await asyncio.sleep(1*60)
                     info_order = get_order_id(id_order=order[0])
                     print(info_order)
-                    if info_order[7] == 0 and not info_order[6] == 'three_minute':
+                    list_id_cancel = list(map(int, info_order[11].split(',')))
+                    # если исполнитель еще не определен и пользователь не отказался от заказа
+                    if info_order[8] == 0 and user[0] not in list_id_cancel:
                         if 'result' in result:
                             await bot.delete_message(chat_id=user[1],
                                                      message_id=msg1.message_id)
@@ -260,15 +293,18 @@ async def process_mailer(bot: Bot):
                             msg2 = await bot.send_message(chat_id=user[1],
                                                           text=f'У вас еще есть шанс взять заявку\n'
                                                                f'Заявка № {order[0]}.\n'
-                                                               f'Категория: {order[4]}\n'
-                                                               f'Описание: {order[2]}\n',
+                                                               f'Категория: {order[5]}\n'
+                                                               f'Описание: {order[3]}\n',
                                                           reply_markup=keyboard_get_order(id_order=order[0]))
                     else:
                         return
 
                     await asyncio.sleep(1 * 60)
                     info_order = get_order_id(id_order=order[0])
-                    if info_order[7] == 0 and not info_order[6] == 'three_minute':
+                    # если пользователь еще не определен
+                    list_id_cancel = list(map(int, info_order[11].split(',')))
+                    # если исполнитель еще не определен и пользователь не отказался от заказа
+                    if info_order[8] == 0 and user[0] not in list_id_cancel:
                         if 'result' in result:
                             await bot.delete_message(chat_id=user[1],
                                                      message_id=msg2.message_id)
@@ -276,20 +312,26 @@ async def process_mailer(bot: Bot):
                             msg3 = await bot.send_message(chat_id=user[1],
                                                           text=f'Последняя попытка взять заказ\n'
                                                                f'Заявка № {order[0]}.\n'
-                                                               f'Категория: {order[4]}\n'
-                                                               f'Описание: {order[2]}\n',
+                                                               f'Категория: {order[5]}\n'
+                                                               f'Описание: {order[3]}\n',
                                                           reply_markup=keyboard_get_order(id_order=order[0]))
                     else:
                         return
                     await asyncio.sleep(1 * 60)
                     info_order = get_order_id(id_order=order[0])
-                    if info_order[7] == 0 and not info_order[6] == 'three_minute':
+                    list_id_cancel = list(map(int, info_order[11].split(',')))
+                    # если исполнитель еще не определен и пользователь не отказался от заказа
+                    if info_order[8] == 0 and user[0] not in list_id_cancel:
                         if 'result' in result:
+                            print(info_order[7])
                             await bot.delete_message(chat_id=user[1],
                                                      message_id=msg3.message_id)
                             set_status_order(id_order=order[0], status='three_minute')
                     else:
                         return
+                else:
+                    # переходим к следующему пользователю если этому уже производилась рассылка
+                    continue
 
 
 @router.callback_query(F.data.startswith('getorder_cancel_'))
@@ -312,6 +354,32 @@ async def getorder_cancel(callback: CallbackQuery, bot: Bot) -> None:
             await bot.send_message(chat_id=int(id_superadmin),
                                    text=f'Пользователь {callback.from_user.username} отказался от'
                                         f' выполнения заявки № {id_order}')
+    #         id INTEGER PRIMARY KEY,
+    #         time_order TEXT,
+    #         id_creator INTEGER,
+    #         description_order TEXT,
+    #         contact_order TEXT,
+    #         category INTEGER,
+    #         mailer_order TEXT,
+    #         status TEXT,
+    #         id_user INTEGER,
+    #         amount INTEGER,
+    #         report TEXT
+    info_order = get_order_id(id_order=id_order)
+    # id_cancel_str = info_order[11]
+    # list_id_cancel = id_cancel_str.split(',')
+    # print("list_id_cancel",list_id_cancel)
+    list_id_cancel = list(map(int, info_order[11].split(',')))
+    info_user = get_info_user(telegram_id=callback.message.chat.id)
+    list_id_cancel.append(info_user[0])
+    set_id_cancel_order(id_order=id_order, cancel_id=','.join(map(str, list_id_cancel)))
+    result = get_telegram_user(user_id=info_order[2],
+                               bot_token=config.tg_bot.token)
+    if 'result' in result and info_order[2] not in map(int, list_super_admin):
+        await bot.send_message(chat_id=info_order[2],
+                               text=f'Пользователь {callback.from_user.username} отказался от'
+                                    f' выполнения заявки № {id_order}')
+    print(f'Пользователь {callback.from_user.username} отказался от выполнения заявки № {id_order}')
     await process_mailer(bot=bot)
 
 
@@ -338,6 +406,13 @@ async def getorder_confirm(callback: CallbackQuery, bot: Bot) -> None:
             await bot.send_message(chat_id=int(id_superadmin),
                                    text=f'Пользователь {callback.from_user.username} взял'
                                         f' заявку № {id_order}')
+    info_order = get_order_id(id_order=id_order)
+    result = get_telegram_user(user_id=info_order[2],
+                               bot_token=config.tg_bot.token)
+    if 'result' in result and info_order[2] not in map(int, list_super_admin):
+        await bot.send_message(chat_id=info_order[2],
+                               text=f'Пользователь {callback.from_user.username} взял'
+                                    f' заявку № {id_order}')
     # получаем информацию о заказе
     info_order = get_order_id(id_order=id_order)
     await callback.message.answer(text=f'Вы взяли в работу заявку № {id_order}.\n'

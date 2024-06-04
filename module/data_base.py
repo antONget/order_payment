@@ -83,6 +83,19 @@ def get_list_notadmins() -> list:
         return list_notadmins
 
 
+def get_list_users() -> list:
+    """
+    Получить список верифицированных пользователей не являющихся администратором
+    :return:
+    """
+    logging.info(f'get_list_users')
+    with db:
+        sql = db.cursor()
+        sql.execute('SELECT * FROM users')
+        list_users = [row for row in sql.fetchall()]
+        return list_users
+
+
 # АДМИНИСТРАТОРЫ - Назначить пользователя администратором
 def set_admins(telegram_id: int):
     """
@@ -206,6 +219,7 @@ def create_table_order() -> None:
         sql.execute("""CREATE TABLE IF NOT EXISTS orders(
             id INTEGER PRIMARY KEY,
             time_order TEXT,
+            id_creator INTEGER,
             description_order TEXT,
             contact_order TEXT,
             category INTEGER,
@@ -213,30 +227,35 @@ def create_table_order() -> None:
             status TEXT,
             id_user INTEGER, 
             amount INTEGER,
-            report TEXT
+            report TEXT,
+            cancel_id TEXT,
+            comment TEXT
         )""")
         db.commit()
 
 
 # ЗАЯВКА - добавление заявки
-def add_order(time_order: str, description_order: str, contact_order: str, category: str, mailer_order: str, status: str, id_user: int, amount: int, report: str) -> None:
+def add_order(time_order: str, id_creator: int, description_order: str, contact_order: str, category: str, mailer_order: str, status: str, id_user: int, amount: int, report: str, cancel_id: str, comment: str) -> None:
     """
     Добавление заявки в базу
-    :param time_order:
-    :param description_order:
-    :param contact_order:
-    :param category:
-    :param mailer_order:
-    :param status:
-    :param id_user:
-    :param amount:
+    :param time_order: время создания заявки
+    :param id_creator: id telegram создателя заявки
+    :param description_order: описание заявки
+    :param contact_order: данные о контактах клиента
+    :param category: категория заявки
+    :param mailer_order: список кому уже был предложена заявка при ее расслке
+    :param status: статус заявки
+    :param id_user: id_telegram
+    :param amount: стоимость выполнения заявки
+    :param report: отчет к заказу
+    :param cancel_id: список отказавшихся
     :return:
     """
     logging.info(f'add_category')
     with db:
         sql = db.cursor()
-        sql.execute(f'INSERT INTO orders (time_order, description_order, contact_order, category, mailer_order, status, id_user, amount, report)'
-                    f' VALUES ("{time_order}", "{description_order}", "{contact_order}", {category}, "{mailer_order}", "{status}", {id_user}, {amount}, "{report}")')
+        sql.execute(f'INSERT INTO orders (time_order, id_creator, description_order, contact_order, category, mailer_order, status, id_user, amount, report, cancel_id, comment)'
+                    f' VALUES ("{time_order}", {id_creator}, "{description_order}", "{contact_order}", {category}, "{mailer_order}", "{status}", {id_user}, {amount}, "{report}", "{cancel_id}", "{comment}")')
         db.commit()
 
 
@@ -268,6 +287,20 @@ def get_list_order_id(id_user: int) -> list:
         return list_category
 
 
+# ЗАЯВКА - получение списка заявок исполнителя
+def get_list_order_id_not_complete(id_user: int) -> list:
+    """
+    ЗАЯВКА - получение списка заявок исполнителя
+    :return: list(order:str)
+    """
+    logging.info(f'get_list_order')
+    with db:
+        sql = db.cursor()
+        sql.execute('SELECT * FROM orders WHERE id_user = ? AND NOT status = ? ORDER BY id', (id_user, 'complete'))
+        list_category = [row for row in sql.fetchall()]
+        return list_category
+
+
 # ЗАЯВКА - получение заявки по id
 def get_order_id(id_order: int):
     """
@@ -294,6 +327,20 @@ def set_mailer_order(id_order: int, mailer_order: str):
     with db:
         sql = db.cursor()
         sql.execute('UPDATE orders SET mailer_order = ? WHERE id = ?', (mailer_order, id_order,))
+        db.commit()
+
+
+def set_id_cancel_order(id_order: int, cancel_id: str):
+    """
+    Обновляем список рассылки для заказа
+    :param id_order:
+    :param cancel_id:
+    :return:
+    """
+    logging.info(f'set_select')
+    with db:
+        sql = db.cursor()
+        sql.execute('UPDATE orders SET cancel_id = ? WHERE id = ?', (cancel_id, id_order,))
         db.commit()
 
 

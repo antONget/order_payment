@@ -18,7 +18,7 @@ config: Config = load_config()
 async def process_start_command_user(message: Message) -> None:
     logging.info("process_start_command_user")
     """
-    Запуск бота исполнителем
+    Запуск бота исполнителем и выбор категорий для получения заявок
     :param message: 
     :return: 
     """
@@ -26,7 +26,7 @@ async def process_start_command_user(message: Message) -> None:
     create_table_category()
     add_user(id_user=message.chat.id, user_name=message.from_user.username)
     await message.answer(text=f"Привет, {message.from_user.first_name} 👋\n"
-                              f"Здесь можно получить заявку",
+                              f"Здесь можно получить  и создать заявку",
                          reply_markup=keyboards_user())
 
     list_select_category = get_select(telegram_id=message.chat.id)
