@@ -135,7 +135,7 @@ async def process_simple_calendar_finish(callback: CallbackQuery, callback_data:
             order_date = order[1].split('/')
             check_date = date(int(order_date[2]), int(order_date[1]), int(order_date[0]))
             print(data_start, check_date, data_finish)
-            if data_start <= check_date <= data_finish and order[6] == 'complete':
+            if data_start <= check_date <= data_finish and order[7] == 'complete':
                 filter_order_data.append(order)
         if len(filter_order_data):
             list_sales_to_exel(list_orders=filter_order_data)

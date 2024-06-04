@@ -12,7 +12,7 @@ def list_sales_to_exel(list_orders: list):
         dict_stat["Описание"].append(order[3])
         dict_stat["Контакты"].append(order[4])
         dict_stat["Статус"].append(order[7])
-        dict_stat["Исполнитель"].append(order[7])
+        dict_stat["Исполнитель"].append(order[8])
         dict_stat["Стоимость"].append(order[9])
     df_stat = pd.DataFrame(dict_stat)
     with pd.ExcelWriter(path='./order.xlsx', engine='xlsxwriter') as writer:
