@@ -7,6 +7,7 @@ YOOKASSA_ID='396590'
 yookassa.Configuration.account_id = YOOKASSA_ID
 yookassa.Configuration.secret_key = YOOKASSA_KEY
 
+
 def create_payment(amount: str, chat_id: int):
     id_key = str(uuid.uuid4())
     payment = Payment.create({
@@ -19,7 +20,7 @@ def create_payment(amount: str, chat_id: int):
         },
         "confirmation": {
             "type": "redirect",
-            "return_url": "https://t.me/inspecttest_bot"
+            "return_url": "https://t.me/OazisRemont_bot"
         },
         "capture": True,
         "meta_data": {
@@ -29,9 +30,12 @@ def create_payment(amount: str, chat_id: int):
     }, id_key)
     return payment.confirmation.confirmation_url, payment.id
 
+
 def check_payment(payment_id):
     payment = yookassa.Payment.find_one(payment_id)
-    if payment.status == 'succeeded':
-        return payment.metadata
-    else:
-        return False
+    print(payment.status)
+    return payment.status
+    # if payment.status == 'succeeded':
+    #     return payment.metadata
+    # else:
+    #     return False

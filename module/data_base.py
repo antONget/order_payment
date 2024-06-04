@@ -110,6 +110,20 @@ def set_admins(telegram_id: int):
         db.commit()
 
 
+def set_rating(telegram_id: int, rating: int):
+    """
+    Назначение пользователя с id_telegram администратором
+    :param telegram_id:
+    :param rating:
+    :return:
+    """
+    logging.info(f'set_rating')
+    with db:
+        sql = db.cursor()
+        sql.execute('UPDATE users SET rating = ? WHERE telegram_id = ?', (rating, telegram_id))
+        db.commit()
+
+
 # АДМИНИСТРАТОРЫ - Разжаловать пользователя из администраторов
 def set_notadmins(telegram_id):
     """
@@ -301,6 +315,18 @@ def get_list_order_id_not_complete(id_user: int) -> list:
         return list_category
 
 
+def get_list_order_id_complete(id_user: int) -> list:
+    """
+    ЗАЯВКА - получение списка заявок исполнителя
+    :return: list(order:str)
+    """
+    logging.info(f'get_list_order')
+    with db:
+        sql = db.cursor()
+        sql.execute('SELECT * FROM orders WHERE id_user = ? AND status = ? ORDER BY id', (id_user, 'complete'))
+        list_category = [row for row in sql.fetchall()]
+        return list_category
+
 # ЗАЯВКА - получение заявки по id
 def get_order_id(id_order: int):
     """
@@ -382,7 +408,7 @@ def set_report_order(id_order: int, report: str):
     :param report:
     :return:
     """
-    logging.info(f'set_select')
+    logging.info(f'set_report_order')
     with db:
         sql = db.cursor()
         sql.execute('UPDATE orders SET report = ? WHERE id = ?', (report, id_order,))
@@ -402,6 +428,34 @@ def set_amount_order(id_order: int, amount: int):
         sql = db.cursor()
         sql.execute('UPDATE orders SET amount = ? WHERE id = ?', (amount, id_order,))
         db.commit()
+
+
+def set_comment_order(id_order: int, comment: str):
+    """
+    Обновляем исполнителя заказа
+    :param id_order:
+    :param comment:
+    :return:
+    """
+    logging.info(f'set_comment_order')
+    with db:
+        sql = db.cursor()
+        sql.execute('UPDATE orders SET comment = ? WHERE id = ?', (comment, id_order,))
+        db.commit()
+
+
+# def set_reating_order(id_user: int, reating: str):
+#     """
+#     Обновляем исполнителя заказа
+#     :param id_order:
+#     :param report:
+#     :return:
+#     """
+#     logging.info(f'set_report_order')
+#     with db:
+#         sql = db.cursor()
+#         sql.execute('UPDATE orders SET report = ? WHERE id = ?', (report, id_order,))
+#         db.commit()
 
 
 # СОЗДАНИЕ ТАБЛИЦ - category

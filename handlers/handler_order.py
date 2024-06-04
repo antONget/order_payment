@@ -6,7 +6,8 @@ from aiogram.filters import StateFilter
 from aiogram.filters.callback_data import CallbackData
 import aiogram_calendar
 
-from module.data_base import get_info_user, get_list_order_id, set_status_order, set_report_order, set_amount_order, get_order_id, get_list_order
+from module.data_base import get_info_user, get_list_order_id, set_status_order, set_report_order, set_amount_order,\
+    get_order_id, get_list_order, set_comment_order, get_list_order_id_complete, set_rating
 from keyboards.keyboard_order import keyboard_order_in_process, keyboard_order, keyboard_change_status_order, \
     keyboard_payment, keyboard_comment
 from services.stat_exel import list_sales_to_exel
@@ -223,6 +224,8 @@ async def process_order_change_status(callback: CallbackQuery, bot: Bot, state: 
             await bot.send_message(chat_id=info_order[2],
                                    text=f'Пользователь {callback.from_user.username} изменил статус'
                                         f' заявки № {id_order} на "Согласовано время"')
+        await bot.delete_message(chat_id=callback.message.chat.id,
+                                 message_id=callback.message.message_id)
     elif change_status == 'comment':
         # set_status_order(id_order=id_order, status=change_status)
         await callback.message.answer(text=f'Пришлите комментарий для заказа № {id_order}')
@@ -282,7 +285,9 @@ async def process_order_comment_add(callback: CallbackQuery, bot: Bot, state: FS
     user_dict[callback.message.chat.id] = await state.get_data()
     id_order = user_dict[callback.message.chat.id]['report_id_order']
     comment = user_dict[callback.message.chat.id]['comment']
-    await callback.answer(text=f'Комментарий к заказу № {id_order} добавлен')
+    await bot.delete_message(chat_id=callback.message.chat.id,
+                             message_id=callback.message.message_id)
+    await callback.answer(text=f'Комментарий к заказу № {id_order} добавлен', show_alert=True)
     list_super_admin = config.tg_bot.admin_ids.split(',')
     for id_superadmin in list_super_admin:
         result = get_telegram_user(user_id=int(id_superadmin),
@@ -298,15 +303,18 @@ async def process_order_comment_add(callback: CallbackQuery, bot: Bot, state: FS
         await bot.send_message(chat_id=info_order[2],
                                text=f'К заказу № {id_order} добавлен комментарий\n'
                                     f'{comment}')
+    set_comment_order(id_order=id_order, comment=comment)
     await state.set_state(default_state)
 
 
 @router.callback_query(F.data == 'comment_cancel')
-async def process_order_comment_cancel(callback: CallbackQuery, state: FSMContext):
+async def process_order_comment_cancel(callback: CallbackQuery, state: FSMContext, bot: Bot):
     logging.info(f'process_order_comment_cancel: {callback.message.chat.id}')
+    await bot.delete_message(chat_id=callback.message.chat.id,
+                             message_id=callback.message.message_id)
     user_dict[callback.message.chat.id] = await state.get_data()
     id_order = user_dict[callback.message.chat.id]['report_id_order']
-    await callback.answer(text=f'Добавление комментария к заказу № {id_order} отменено')
+    await callback.answer(text=f'Добавление комментария к заказу № {id_order} отменено', show_alert=True)
     await state.set_state(default_state)
 
 
@@ -375,13 +383,55 @@ async def process_get_amount_order(message: Message, bot: Bot, state: FSMContext
     await message.answer(text=f'Произведите оплату за полученную заявку в размере {price_amount}',
                          reply_markup=keyboard_payment(payment_url=payment_url,
                                                        payment_id=payment_id))
+    await state.set_state(default_state)
+
+@router.callback_query(F.data.startswith('payment'))
+async def check_handler(callback: CallbackQuery, bot: Bot, state: FSMContext):
+    logging.info(f'check_handler: {callback.message.chat.id}-{callback.data.split("_")[1]}')
+    payment_id = callback.data.split('_')[1]
+    result = check_payment(payment_id)
+    if result == 'succeeded':
+
+        user_dict[callback.message.chat.id] = await state.get_data()
+        id_order = user_dict[callback.message.chat.id]['report_id_order']
+        set_status_order(id_order=id_order, status='complete')
+        await callback.message.answer(text=f'Платеж проведен успешно!')
+        list_super_admin = config.tg_bot.admin_ids.split(',')
+        for id_superadmin in list_super_admin:
+            result = get_telegram_user(user_id=int(id_superadmin),
+                                       bot_token=config.tg_bot.token)
+            if 'result' in result:
+                await bot.send_message(chat_id=int(id_superadmin),
+                                       text=f'Платеж за заказ № {id_order} проведен успешно!')
+        info_order = get_order_id(id_order=id_order)
+        result = get_telegram_user(user_id=info_order[2],
+                                   bot_token=config.tg_bot.token)
+        if 'result' in result and info_order[2] not in map(int, list_super_admin):
+            await bot.send_message(chat_id=info_order[2],
+                                   text=f'Платеж за заказ № {id_order} проведен успешно!')
+        info_user = get_info_user(telegram_id=callback.message.chat.id)
+        #     id INTEGER PRIMARY KEY,
+        #     time_order TEXT,
+        #     id_creator INTEGER,
+        #     description_order TEXT,
+        #     contact_order TEXT,
+        #     category INTEGER,
+        #     mailer_order TEXT,
+        #     status TEXT,
+        #     id_user INTEGER,
+        #     amount INTEGER,
+        #     report TEXT,
+        #     cancel_id TEXT,
+        #     comment TEXT
+        list_order_id_complete = get_list_order_id_complete(id_user=callback.message.chat.id)
+        total_amount = 0
+        for order in list_order_id_complete:
+            total_amount += order[9]
+        rating = total_amount // len(list_order_id_complete)
+        set_rating(telegram_id=callback.message.chat.id, rating=rating)
+        await callback.answer(text='Ваш рейтинг обновлен', show_alert=True)
 
 
-@router.callback_query(F.data == 'check')
-async def check_handler(callback: CallbackQuery):
-    logging.info(f'error_amount_order: {callback.message.chat.id}')
-    result = check_payment()
-    print(result)
 
 
 @router.message(StateFilter(Tasks.amount))

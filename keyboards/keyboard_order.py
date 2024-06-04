@@ -43,6 +43,6 @@ def keyboard_payment(payment_url: str, payment_id: int) -> None:
 def keyboard_comment() -> None:
     logging.info("keyboard_select_period_sales")
     button_1 = InlineKeyboardButton(text='Добавить', callback_data=f'comment_add')
-    button_2 = InlineKeyboardButton(text='Отменить', url=f'comment_cancel')
+    button_2 = InlineKeyboardButton(text='Отменить', callback_data=f'comment_cancel')
     keyboard = InlineKeyboardMarkup(inline_keyboard=[[button_2], [button_1]],)
     return keyboard
