@@ -269,11 +269,12 @@ async def process_mailer(bot: Bot):
                     # если пользователь не заблокировал бота
                     if 'result' in result:
                         set_status_order(id_order=order[0], status='one_minute')
+                        title_category = get_title_category(order[5])
                         # отправляем ему сообщение
                         msg1 = await bot.send_message(chat_id=user[1],
                                                       text=f'Поступила заявка\n'
                                                            f'Заявка № {order[0]}.\n'
-                                                           f'Категория: {order[5]}\n'
+                                                           f'Категория: {title_category}\n'
                                                            f'Описание: {order[3]}\n',
                                                       reply_markup=keyboard_get_order(id_order=order[0]))
                         # обновляем список рассылки заявки
@@ -293,13 +294,14 @@ async def process_mailer(bot: Bot):
                     # если исполнитель еще не определен и пользователь не отказался от заказа
                     if info_order[8] == 0 and user[0] not in list_id_cancel:
                         if 'result' in result:
+                            title_category = get_title_category(order[5])
                             await bot.delete_message(chat_id=user[1],
                                                      message_id=msg1.message_id)
                             # отправляем ему сообщение
                             msg2 = await bot.send_message(chat_id=user[1],
                                                           text=f'У вас еще есть шанс взять заявку\n'
                                                                f'Заявка № {order[0]}.\n'
-                                                               f'Категория: {order[5]}\n'
+                                                               f'Категория: {title_category}\n'
                                                                f'Описание: {order[3]}\n',
                                                           reply_markup=keyboard_get_order(id_order=order[0]))
                     else:
@@ -312,13 +314,14 @@ async def process_mailer(bot: Bot):
                     # если исполнитель еще не определен и пользователь не отказался от заказа
                     if info_order[8] == 0 and user[0] not in list_id_cancel:
                         if 'result' in result:
+                            title_category = get_title_category(order[5])
                             await bot.delete_message(chat_id=user[1],
                                                      message_id=msg2.message_id)
                             # отправляем ему сообщение
                             msg3 = await bot.send_message(chat_id=user[1],
                                                           text=f'Последняя попытка взять заказ\n'
                                                                f'Заявка № {order[0]}.\n'
-                                                               f'Категория: {order[5]}\n'
+                                                               f'Категория: {title_category}\n'
                                                                f'Описание: {order[3]}\n',
                                                           reply_markup=keyboard_get_order(id_order=order[0]))
                     else:
@@ -421,7 +424,9 @@ async def getorder_confirm(callback: CallbackQuery, bot: Bot) -> None:
                                     f' заявку № {id_order}')
     # получаем информацию о заказе
     info_order = get_order_id(id_order=id_order)
+    title_category = get_title_category(info_order[5])
     await callback.message.answer(text=f'Вы взяли в работу заявку № {id_order}.\n'
+                                       f'Категория:{title_category}'
                                        f'Описание: {info_order[3]}\n'
                                        f'Контакты: {info_order[4]}\n\n'
                                        f'Для внесения информации о ходе выполнения заявки и для ее закрытия'
