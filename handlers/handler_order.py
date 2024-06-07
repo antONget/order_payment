@@ -52,6 +52,11 @@ def get_telegram_user(user_id, bot_token):
 # main keyboard -> [Отчет]
 @router.message(F.text == 'Заявки')
 async def process_order(message: Message) -> None:
+    """
+    Нажата кнопка "Заявки" -> [Выполненные], [В работе]
+    :param message:
+    :return:
+    """
     logging.info(f'process_order: {message.chat.id}')
     await message.answer(text=f'Выберите заявку',
                          reply_markup=keyboard_order())
@@ -119,7 +124,14 @@ async def process_simple_calendar_finish(callback: CallbackQuery, callback_data:
         await state.set_state(default_state)
         # информация о пользователе
         info_user = get_info_user(telegram_id=callback.message.chat.id)
-        list_order_id = get_list_order_id(id_user=callback.message.chat.id)
+        admin_list = list(map(int, config.tg_bot.admin_ids.split(',')))
+        # если запрос делает админ
+        if callback.message.chat.id in admin_list:
+            list_order_id = get_list_order()
+        else:
+            # данные о заказах пользователя
+            list_order_id = get_list_order_id(id_user=callback.message.chat.id)
+        # список для отфильтрованных заказов по дате
         filter_order_data = []
         user_dict[callback.message.chat.id] = await state.get_data()
         period_start_str = user_dict[callback.message.chat.id]['period_start']
