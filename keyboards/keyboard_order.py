@@ -46,3 +46,11 @@ def keyboard_comment() -> None:
     button_2 = InlineKeyboardButton(text='Отменить', callback_data=f'comment_cancel')
     keyboard = InlineKeyboardMarkup(inline_keyboard=[[button_2], [button_1]],)
     return keyboard
+
+
+def keyboard_confirm_screenshot(id_telegram: int, id_order: int) -> None:
+    logging.info("keyboard_confirm_screenshot")
+    button_1 = InlineKeyboardButton(text='Подтвердить', callback_data=f'screenshot_confirm_{id_telegram}_{id_order}')
+    button_2 = InlineKeyboardButton(text='Спам', callback_data=f'screenshot_cancel_{id_telegram}_{id_order}')
+    keyboard = InlineKeyboardMarkup(inline_keyboard=[[button_2], [button_1]],)
+    return keyboard

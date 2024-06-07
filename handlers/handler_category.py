@@ -59,11 +59,13 @@ async def process_get_title_category(message: Message, state: FSMContext, bot: B
     print(list_mailer_category)
     list_super_admin = config.tg_bot.admin_ids.split(',')
     for user in list_mailer_category:
-        if user[0] not in map(int, list_super_admin):
+        if user[1] not in map(int, list_super_admin):
             result = get_telegram_user(user_id=user[1], bot_token=config.tg_bot.token)
             if 'result' in result:
                 await bot.send_message(chat_id=user[1],
-                                       text=f'Создана новая категория {message.text}')
+                                       text=f'Создана новая категория {message.text}\n'
+                                            f'Если желаете добавить ее в список категорий для получения заявок по ней,'
+                                            f' то нажмите /start или введите ее в поле ввода')
     await state.set_state(default_state)
 
 

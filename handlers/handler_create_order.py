@@ -188,6 +188,7 @@ async def order_mailer(callback: CallbackQuery, state: FSMContext, bot: Bot) -> 
               report='none',
               cancel_id='0,0',
               comment='none')
+    await callback.message.answer(text=f'Рассылка заявки запущена. Ожидайте изменения статуса заявки.')
     await process_mailer(bot=bot)
 
 
@@ -239,14 +240,16 @@ async def process_mailer(bot: Bot):
             for user in list_sorted_user:
                 # проверяем количество заявок в работе и что получатель не супер-админ
                 list_order_id_not_complete = get_list_order_id_not_complete(id_user=user[1])
+                print("list_order_id_not_complete", list_order_id_not_complete)
                 list_super_admin = config.tg_bot.admin_ids.split(',')
                 result = get_telegram_user(user_id=user[1], bot_token=config.tg_bot.token)
                 if len(list_order_id_not_complete) >= 5 or\
                         user[1] in map(int, list_super_admin) or\
-                        'result' not in result:
+                        'result' not in result or\
+                        user[1] == order[2]:
                     # print(len(list_order_id_not_complete) >= 2, user[1] in map(int, list_super_admin))
                     continue
-                print("user", user)
+                print("user", user, "order", order, user[1] == order[1])
                 # получаем допустимые категории для пользователя
                 categorys = user[4]
                 if categorys == '0':
@@ -420,4 +423,6 @@ async def getorder_confirm(callback: CallbackQuery, bot: Bot) -> None:
     info_order = get_order_id(id_order=id_order)
     await callback.message.answer(text=f'Вы взяли в работу заявку № {id_order}.\n'
                                        f'Описание: {info_order[2]}\n'
-                                       f'Контакты: {info_order[3]}')
+                                       f'Контакты: {info_order[3]}\n\n'
+                                       f'Для внесения информации о ходе выполнения заявки и для ее закрытия'
+                                       f' воспользуйтесь кнопкой "Заявки" в главном меню')

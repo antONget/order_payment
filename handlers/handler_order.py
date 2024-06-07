@@ -9,7 +9,7 @@ import aiogram_calendar
 from module.data_base import get_info_user, get_list_order_id, set_status_order, set_report_order, set_amount_order,\
     get_order_id, get_list_order, set_comment_order, get_list_order_id_complete, set_rating
 from keyboards.keyboard_order import keyboard_order_in_process, keyboard_order, keyboard_change_status_order, \
-    keyboard_payment, keyboard_comment
+    keyboard_payment, keyboard_comment, keyboard_confirm_screenshot
 from services.stat_exel import list_sales_to_exel
 from services.payments import create_payment, check_payment
 
@@ -30,7 +30,7 @@ class Tasks(StatesGroup):
     comment = State()
     report = State()
     amount = State()
-
+    screenshot = State()
 
 user_dict = {}
 
@@ -188,7 +188,7 @@ async def process_buttons_press_start(callback: CallbackQuery):
     for order in list_order_id:
         if not order[7] == 'complete':
             filter_order_status.append(order)
-    # если есть завершенные заявки
+    # если есть незавершенные заявки
     if len(filter_order_status):
         text = f'Для изменения статуса заявки выберите нужную заявку!\n' \
                f'У вас в работе:\n'
@@ -200,7 +200,7 @@ async def process_buttons_press_start(callback: CallbackQuery):
                                       reply_markup=keyboard_order_in_process(filter_order_status=filter_order_status),
                                       parse_mode='html')
     else:
-        await callback.message.answer(text='Завершенных заявок не найдено')
+        await callback.message.answer(text='Заявок в работе не найдено')
 
 
 @router.callback_query(F.data.startswith('processorder'))
@@ -390,60 +390,61 @@ async def process_get_amount_order(message: Message, bot: Bot, state: FSMContext
                                text=f'Пользователь {message.from_user.username} выполнил'
                                     f' заявку № {id_order} на сумму {amount}')
     price_amount = int(amount/2)
-    PRICE = f'{price_amount}.00'
-    payment_url, payment_id = create_payment(amount=PRICE, chat_id=message.chat.id)
-    await message.answer(text=f'Произведите оплату за полученную заявку в размере {price_amount}',
-                         reply_markup=keyboard_payment(payment_url=payment_url,
-                                                       payment_id=payment_id))
-    await state.set_state(default_state)
-
-@router.callback_query(F.data.startswith('payment'))
-async def check_handler(callback: CallbackQuery, bot: Bot, state: FSMContext):
-    logging.info(f'check_handler: {callback.message.chat.id}-{callback.data.split("_")[1]}')
-    payment_id = callback.data.split('_')[1]
-    result = check_payment(payment_id)
-    if result == 'succeeded':
-
-        user_dict[callback.message.chat.id] = await state.get_data()
-        id_order = user_dict[callback.message.chat.id]['report_id_order']
-        set_status_order(id_order=id_order, status='complete')
-        await callback.message.answer(text=f'Платеж проведен успешно!')
-        list_super_admin = config.tg_bot.admin_ids.split(',')
-        for id_superadmin in list_super_admin:
-            result = get_telegram_user(user_id=int(id_superadmin),
-                                       bot_token=config.tg_bot.token)
-            if 'result' in result:
-                await bot.send_message(chat_id=int(id_superadmin),
-                                       text=f'Платеж за заказ № {id_order} проведен успешно!')
-        info_order = get_order_id(id_order=id_order)
-        result = get_telegram_user(user_id=info_order[2],
-                                   bot_token=config.tg_bot.token)
-        if 'result' in result and info_order[2] not in map(int, list_super_admin):
-            await bot.send_message(chat_id=info_order[2],
-                                   text=f'Платеж за заказ № {id_order} проведен успешно!')
-        info_user = get_info_user(telegram_id=callback.message.chat.id)
-        #     id INTEGER PRIMARY KEY,
-        #     time_order TEXT,
-        #     id_creator INTEGER,
-        #     description_order TEXT,
-        #     contact_order TEXT,
-        #     category INTEGER,
-        #     mailer_order TEXT,
-        #     status TEXT,
-        #     id_user INTEGER,
-        #     amount INTEGER,
-        #     report TEXT,
-        #     cancel_id TEXT,
-        #     comment TEXT
-        list_order_id_complete = get_list_order_id_complete(id_user=callback.message.chat.id)
-        total_amount = 0
-        for order in list_order_id_complete:
-            total_amount += order[9]
-        rating = total_amount // len(list_order_id_complete)
-        set_rating(telegram_id=callback.message.chat.id, rating=rating)
-        await callback.answer(text='Ваш рейтинг обновлен', show_alert=True)
-
-
+    await message.answer(text=f'Произведите оплату за полученную заявку № {id_order} в размере {price_amount}'
+                              f'на номер телефона +79135334364 и пришлите боту скриншот об оплате')
+    await state.set_state(Tasks.screenshot)
+#     PRICE = f'{price_amount}.00'
+#     payment_url, payment_id = create_payment(amount=PRICE, chat_id=message.chat.id)
+#     await message.answer(text=f'Произведите оплату за полученную заявку в размере {price_amount}',
+#                          reply_markup=keyboard_payment(payment_url=payment_url,
+#                                                        payment_id=payment_id))
+#     await state.set_state(default_state)
+#
+# @router.callback_query(F.data.startswith('payment'))
+# async def check_handler(callback: CallbackQuery, bot: Bot, state: FSMContext):
+#     logging.info(f'check_handler: {callback.message.chat.id}-{callback.data.split("_")[1]}')
+#     payment_id = callback.data.split('_')[1]
+#     result = check_payment(payment_id)
+#     if result == 'succeeded':
+#
+#         user_dict[callback.message.chat.id] = await state.get_data()
+#         id_order = user_dict[callback.message.chat.id]['report_id_order']
+#         set_status_order(id_order=id_order, status='complete')
+#         await callback.message.answer(text=f'Платеж проведен успешно!')
+#         list_super_admin = config.tg_bot.admin_ids.split(',')
+#         for id_superadmin in list_super_admin:
+#             result = get_telegram_user(user_id=int(id_superadmin),
+#                                        bot_token=config.tg_bot.token)
+#             if 'result' in result:
+#                 await bot.send_message(chat_id=int(id_superadmin),
+#                                        text=f'Платеж за заказ № {id_order} проведен успешно!')
+#         info_order = get_order_id(id_order=id_order)
+#         result = get_telegram_user(user_id=info_order[2],
+#                                    bot_token=config.tg_bot.token)
+#         if 'result' in result and info_order[2] not in map(int, list_super_admin):
+#             await bot.send_message(chat_id=info_order[2],
+#                                    text=f'Платеж за заказ № {id_order} проведен успешно!')
+#         info_user = get_info_user(telegram_id=callback.message.chat.id)
+#         #     id INTEGER PRIMARY KEY,
+#         #     time_order TEXT,
+#         #     id_creator INTEGER,
+#         #     description_order TEXT,
+#         #     contact_order TEXT,
+#         #     category INTEGER,
+#         #     mailer_order TEXT,
+#         #     status TEXT,
+#         #     id_user INTEGER,
+#         #     amount INTEGER,
+#         #     report TEXT,
+#         #     cancel_id TEXT,
+#         #     comment TEXT
+#         list_order_id_complete = get_list_order_id_complete(id_user=callback.message.chat.id)
+#         total_amount = 0
+#         for order in list_order_id_complete:
+#             total_amount += order[9]
+#         rating = total_amount // len(list_order_id_complete)
+#         set_rating(telegram_id=callback.message.chat.id, rating=rating)
+#         await callback.answer(text='Ваш рейтинг обновлен', show_alert=True)
 
 
 @router.message(StateFilter(Tasks.amount))
@@ -452,3 +453,55 @@ async def error_amount_order(message: Message):
     await message.answer(text='Некорректно указана сумма заказа, повторите ввод!')
 
 
+@router.message(StateFilter(Tasks.screenshot))
+async def get_screenshot_chek(message: Message, bot: Bot, state: FSMContext):
+    logging.info(f'error_amount_order: {message.chat.id}')
+    if message.photo:
+        user_dict[message.chat.id] = await state.get_data()
+        id_order = user_dict[message.chat.id]['report_id_order']
+        await message.answer(text=f'Чек об оплате заказа № {id_order} отправлен на согласование, ожидайте подтверждение')
+        list_super_admin = config.tg_bot.admin_ids.split(',')
+        for id_superadmin in list_super_admin:
+            result = get_telegram_user(user_id=int(id_superadmin),
+                                       bot_token=config.tg_bot.token)
+            if 'result' in result:
+                await bot.send_photo(chat_id=int(id_superadmin),
+                                     photo=message.photo[-1].file_id,
+                                     caption=f'Подтвердите чек об оплате заказа № {id_order} от {message.from_user.username}',
+                                     reply_markup=keyboard_confirm_screenshot(id_telegram=message.chat.id,
+                                                                              id_order=id_order))
+    else:
+        await message.answer(text='Кажется это не скриншот. Повторите отправку!')
+
+
+@router.callback_query(F.data.startswith('screenshot'))
+async def process_answer_admin_screenshot(callback: CallbackQuery, state: FSMContext, bot: Bot):
+    logging.info(f'process_answer_admin_screenshot: {callback.message.chat.id}')
+    answer_admin_screenshot = callback.data.split('_')
+    if answer_admin_screenshot[1] == 'confirm':
+        await callback.answer(text='Платеж подтвержден', show_alert=True)
+        id_telegram_user = int(answer_admin_screenshot[2])
+        result = get_telegram_user(user_id=id_telegram_user,
+                                   bot_token=config.tg_bot.token)
+        if 'result' in result:
+            await bot.send_message(chat_id=id_telegram_user,
+                                   text='Ваш платеж подтвержден')
+        id_order = int(answer_admin_screenshot[3])
+        set_status_order(id_order=id_order, status='complete')
+        # получаем список завершенных пользователем заказов
+        list_order_id_complete = get_list_order_id_complete(id_user=id_telegram_user)
+        total_amount = 0
+        for order in list_order_id_complete:
+            total_amount += order[9]
+        rating = total_amount // len(list_order_id_complete)
+        set_rating(telegram_id=callback.message.chat.id, rating=rating)
+        info_user = get_info_user(telegram_id=id_telegram_user)
+        await callback.message.answer(text=f'Рейтинг {info_user[2]} обновлен')
+    elif answer_admin_screenshot[1] == 'cancel':
+        await callback.answer(text='Платеж отклонен', show_alert=True)
+        id_telegram_user = int(answer_admin_screenshot[2])
+        result = get_telegram_user(user_id=id_telegram_user,
+                                   bot_token=config.tg_bot.token)
+        if 'result' in result:
+            await bot.send_message(chat_id=id_telegram_user,
+                                   text='Ваш платеж отклонен')
