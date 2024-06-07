@@ -241,7 +241,7 @@ async def process_mailer(bot: Bot):
                 list_order_id_not_complete = get_list_order_id_not_complete(id_user=user[1])
                 list_super_admin = config.tg_bot.admin_ids.split(',')
                 result = get_telegram_user(user_id=user[1], bot_token=config.tg_bot.token)
-                if len(list_order_id_not_complete) >= 2 or\
+                if len(list_order_id_not_complete) >= 5 or\
                         user[1] in map(int, list_super_admin) or\
                         'result' not in result:
                     # print(len(list_order_id_not_complete) >= 2, user[1] in map(int, list_super_admin))
