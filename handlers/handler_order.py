@@ -470,6 +470,7 @@ async def get_screenshot_chek(message: Message, bot: Bot, state: FSMContext):
                                      caption=f'Подтвердите чек об оплате заказа № {id_order} от {message.from_user.username}',
                                      reply_markup=keyboard_confirm_screenshot(id_telegram=message.chat.id,
                                                                               id_order=id_order))
+        await state.set_state(default_state)
     else:
         await message.answer(text='Кажется это не скриншот. Повторите отправку!')
 
