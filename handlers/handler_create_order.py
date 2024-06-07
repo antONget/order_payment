@@ -422,7 +422,7 @@ async def getorder_confirm(callback: CallbackQuery, bot: Bot) -> None:
     # получаем информацию о заказе
     info_order = get_order_id(id_order=id_order)
     await callback.message.answer(text=f'Вы взяли в работу заявку № {id_order}.\n'
-                                       f'Описание: {info_order[2]}\n'
-                                       f'Контакты: {info_order[3]}\n\n'
+                                       f'Описание: {info_order[3]}\n'
+                                       f'Контакты: {info_order[4]}\n\n'
                                        f'Для внесения информации о ходе выполнения заявки и для ее закрытия'
                                        f' воспользуйтесь кнопкой "Заявки" в главном меню')
