@@ -33,9 +33,10 @@ def keyboards_partner() -> ReplyKeyboardMarkup:
 def keyboards_user() -> ReplyKeyboardMarkup:
     logging.info("keyboards_user")
     button_1 = KeyboardButton(text='Заявки')
-    button_3 = KeyboardButton(text='Создать заявку')
+    button_2 = KeyboardButton(text='Создать заявку')
+    button_3 = KeyboardButton(text='Поддержка')
     keyboard = ReplyKeyboardMarkup(
-        keyboard=[[button_1], [button_3]],
+        keyboard=[[button_1], [button_2], [button_3]],
         resize_keyboard=True
     )
     return keyboard

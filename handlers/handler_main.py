@@ -1,4 +1,4 @@
-from aiogram import Router
+from aiogram import Router, F
 from aiogram.filters import CommandStart
 from aiogram.types import Message
 
@@ -43,4 +43,12 @@ async def process_start_command_admin(message: Message) -> None:
                          reply_markup=keyboards_partner())
 
 
+@router.message(F.text == 'Поддержка')
+async def process_support(message: Message) -> None:
+    logging.info("process_support")
+    await message.answer(text=f'Если у вас возникли вопросы или предложения по работе бота,'
+                              f' то можете их задать <a href="https://ya.ru/">менеджеру проекта</a>, '
+                              f'а также воспользоваться поддержкой комьюнити в <a href="https://ya.ru/">общем чате</a>',
+                         disable_web_page_preview=True,
+                         parse_mode='html')
 

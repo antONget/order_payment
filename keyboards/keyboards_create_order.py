@@ -76,3 +76,15 @@ def keyboard_get_order(id_order: int) -> None:
         inline_keyboard=[[button_1, button_2]],
     )
     return keyboard
+
+
+def keyboard_contract(id_order: int) -> None:
+    logging.info("keyboard_get_order")
+    button_1 = InlineKeyboardButton(text='Договорились',
+                                    callback_data=f'contract_confirm_{id_order}')
+    button_2 = InlineKeyboardButton(text='НЕ договорились',
+                                    callback_data=f'contract_cancel_{id_order}')
+    keyboard = InlineKeyboardMarkup(
+        inline_keyboard=[[button_1, button_2]],
+    )
+    return keyboard

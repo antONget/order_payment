@@ -8,7 +8,7 @@ from aiogram.fsm.state import State, StatesGroup, default_state
 
 from filter.admin_filter import check_admin
 from config_data.config import Config, load_config
-from keyboards.keyboards_create_order import keyboards_set_category, keyboard_mailer_order, keyboard_get_order
+from keyboards.keyboards_create_order import keyboards_set_category, keyboard_mailer_order, keyboard_get_order, keyboard_contract
 from module.data_base import get_list_order, get_list_notadmins_mailer, get_list_category, get_title_category,\
     create_table_order, add_order, create_table_category, set_mailer_order, set_status_order, set_user_order,\
     get_order_id, get_list_users, get_list_order_id_not_complete, get_info_user, set_id_cancel_order
@@ -429,5 +429,66 @@ async def getorder_confirm(callback: CallbackQuery, bot: Bot) -> None:
                                        f'Категория:{title_category}'
                                        f'Описание: {info_order[3]}\n'
                                        f'Контакты: {info_order[4]}\n\n'
+                                       f'Если не договорились с клиентом то обязательно нажмите "НЕ договорились".\n\n'
                                        f'Для внесения информации о ходе выполнения заявки и для ее закрытия'
-                                       f' воспользуйтесь кнопкой "Заявки" в главном меню')
+                                       f' воспользуйтесь кнопкой "Заявки" в главном меню',
+                                reply_markup=keyboard_contract(id_order=id_order))
+
+
+@router.callback_query(F.data.startswith('contract'))
+async def getorder_contract(callback: CallbackQuery, bot: Bot) -> None:
+    logging.info(f'getorder_confirm: {callback.message.chat.id}')
+    contract = callback.data.split('_')
+    id_order = int(contract[2])
+    if contract[1] == 'cancel':
+        # обновляем статус
+        set_status_order(id_order=id_order,
+                         status='не договорились')
+        # обнуляем исполнителя
+        set_user_order(id_order=id_order,
+                       id_user=0)
+
+        # производим рассылку супер админам
+        list_super_admin = config.tg_bot.admin_ids.split(',')
+        for id_superadmin in list_super_admin:
+            result = get_telegram_user(user_id=int(id_superadmin),
+                                       bot_token=config.tg_bot.token)
+            if 'result' in result:
+                await bot.send_message(chat_id=int(id_superadmin),
+                                       text=f'Пользователь {callback.from_user.username} не договорился по'
+                                            f' заявке № {id_order}. Заявке запущена на повторную рассылку.')
+        info_order = get_order_id(id_order=id_order)
+        result = get_telegram_user(user_id=info_order[2],
+                                   bot_token=config.tg_bot.token)
+        if 'result' in result and info_order[2] not in map(int, list_super_admin):
+            await bot.send_message(chat_id=info_order[2],
+                                   text=f'Пользователь {callback.from_user.username} не договорился по'
+                                        f' заявке № {id_order}. Заявке запущена на повторную рассылку.')
+        await bot.delete_message(chat_id=callback.message.chat.id,
+                                 message_id=callback.message.message_id)
+        await process_mailer(bot=bot)
+
+    elif contract[1] == 'confirm':
+        # обновляем статус
+        set_status_order(id_order=id_order,
+                         status='договорились')
+        # производим рассылку супер админам
+        list_super_admin = config.tg_bot.admin_ids.split(',')
+        for id_superadmin in list_super_admin:
+            result = get_telegram_user(user_id=int(id_superadmin),
+                                       bot_token=config.tg_bot.token)
+            if 'result' in result:
+                await bot.send_message(chat_id=int(id_superadmin),
+                                       text=f'Пользователь {callback.from_user.username} договорился по'
+                                            f' заявке № {id_order}.')
+        info_order = get_order_id(id_order=id_order)
+        result = get_telegram_user(user_id=info_order[2],
+                                   bot_token=config.tg_bot.token)
+        if 'result' in result and info_order[2] not in map(int, list_super_admin):
+            await bot.send_message(chat_id=info_order[2],
+                                   text=f'Пользователь {callback.from_user.username} договорился по'
+                                        f' заявке № {id_order}.')
+        await bot.delete_message(chat_id=callback.message.chat.id,
+                                 message_id=callback.message.message_id)
+        await callback.message.answer(text=f'Для внесения информации о ходе выполнения заявки и для ее закрытия'
+                                           f' воспользуйтесь кнопкой "Заявки" в главном меню',)
