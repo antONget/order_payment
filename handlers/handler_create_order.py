@@ -15,7 +15,7 @@ from module.data_base import get_list_order, get_list_notadmins_mailer, get_list
 
 import logging
 import requests
-from datetime import datetime
+from datetime import datetime, date
 
 router = Router()
 config: Config = load_config()
@@ -225,7 +225,14 @@ async def process_mailer(bot: Bot):
         #             amount INTEGER,
         #             report TEXT
         info_order = get_order_id(id_order=order[0])
-        if info_order[8] == 0:
+        print(info_order)
+        current_date = datetime.now().strftime('%d/%m/%Y')
+        list_current_date = list(map(int, current_date.split('/')))
+        current_date = date(list_current_date[2], list_current_date[1], list_current_date[0])
+        list_date_order = list(map(int, info_order[1].split('/')))
+        date_order = date(list_date_order[2], list_date_order[1], list_date_order[0])
+        # если исполнитель еще не определен и заявке не более суток
+        if info_order[8] == 0 and current_date == date_order:
             print("info_order:", info_order)
             # получаем список пользователей кому уже была произведена рассылка
             mailer_order = order[6]
@@ -402,7 +409,7 @@ async def getorder_confirm(callback: CallbackQuery, bot: Bot) -> None:
     id_order = int(callback.data.split('_')[2])
     # изменяем статус заявки
     set_status_order(id_order=id_order,
-                     status='в работе')
+                     status='in_progress')
     # устанавливаем исполнителя
     set_user_order(id_order=id_order,
                    id_user=callback.message.chat.id)
@@ -425,14 +432,44 @@ async def getorder_confirm(callback: CallbackQuery, bot: Bot) -> None:
     # получаем информацию о заказе
     info_order = get_order_id(id_order=id_order)
     title_category = get_title_category(info_order[5])
-    await callback.message.answer(text=f'Вы взяли в работу заявку № {id_order}.\n'
+    msg = await callback.message.answer(text=f'Вы взяли в работу заявку № {id_order}.\n'
                                        f'Категория:{title_category}'
                                        f'Описание: {info_order[3]}\n'
                                        f'Контакты: {info_order[4]}\n\n'
                                        f'Если не договорились с клиентом то обязательно нажмите "НЕ договорились".\n\n'
                                        f'Для внесения информации о ходе выполнения заявки и для ее закрытия'
                                        f' воспользуйтесь кнопкой "Заявки" в главном меню',
-                                reply_markup=keyboard_contract(id_order=id_order))
+                                  reply_markup=keyboard_contract(id_order=id_order))
+    # время
+    await asyncio.sleep(60 * 10)
+    info_order = get_order_id(id_order=id_order)
+    status = info_order[7]
+    logging.debug(f'{info_order}')
+    if status != 'yes_contract':
+        await bot.delete_message(chat_id=callback.message.chat.id,
+                                 message_id=msg.message_id)
+        await callback.message.answer(text=f'Вы не успели подтвердить заказ № {info_order[0]}!')
+
+        # производим рассылку супер админам
+        list_super_admin = config.tg_bot.admin_ids.split(',')
+        for id_superadmin in list_super_admin:
+            result = get_telegram_user(user_id=int(id_superadmin),
+                                       bot_token=config.tg_bot.token)
+            if 'result' in result:
+                await bot.send_message(chat_id=int(id_superadmin),
+                                       text=f'Пользователь {callback.from_user.username} не успел подтвердить заказ'
+                                            f' № {id_order}. Заказ запущен на повторную рассылку')
+        info_order = get_order_id(id_order=id_order)
+        result = get_telegram_user(user_id=info_order[2],
+                                   bot_token=config.tg_bot.token)
+        if 'result' in result and info_order[2] not in map(int, list_super_admin):
+            await bot.send_message(chat_id=info_order[2],
+                                   text=f'Пользователь {callback.from_user.username} не успел подтвердить заказ'
+                                        f' № {id_order}. Заказ запущен на повторную рассылку')
+        # устанавливаем исполнителя
+        set_user_order(id_order=id_order,
+                       id_user=0)
+        await process_mailer(bot=bot)
 
 
 @router.callback_query(F.data.startswith('contract'))
@@ -443,7 +480,7 @@ async def getorder_contract(callback: CallbackQuery, bot: Bot) -> None:
     if contract[1] == 'cancel':
         # обновляем статус
         set_status_order(id_order=id_order,
-                         status='не договорились')
+                         status='not_contract')
         # обнуляем исполнителя
         set_user_order(id_order=id_order,
                        id_user=0)
@@ -471,7 +508,7 @@ async def getorder_contract(callback: CallbackQuery, bot: Bot) -> None:
     elif contract[1] == 'confirm':
         # обновляем статус
         set_status_order(id_order=id_order,
-                         status='договорились')
+                         status='yes_contract')
         # производим рассылку супер админам
         list_super_admin = config.tg_bot.admin_ids.split(',')
         for id_superadmin in list_super_admin:

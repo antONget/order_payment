@@ -221,6 +221,18 @@ def set_select(list_category: str, telegram_id: int):
         db.commit()
 
 
+def delete_user(telegram_id: int):
+    """
+    ПОЛЬЗОВАТЕЛЬ - удаление пользователя по его id_telegram
+    :param id_telegram:
+    :return:
+    """
+    logging.info(f'delete_user')
+    with db:
+        sql = db.cursor()
+        sql.execute('DELETE FROM users WHERE telegram_id = ?', (telegram_id,))
+        db.commit()
+
 # СОЗДАНИЕ ТАБЛИЦ - order
 def create_table_order() -> None:
     """
