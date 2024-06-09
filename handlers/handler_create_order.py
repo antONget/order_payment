@@ -446,8 +446,11 @@ async def getorder_confirm(callback: CallbackQuery, bot: Bot) -> None:
     status = info_order[7]
     logging.debug(f'{info_order}')
     if status != 'yes_contract':
-        await bot.delete_message(chat_id=callback.message.chat.id,
-                                 message_id=msg.message_id)
+        try:
+            await bot.delete_message(chat_id=callback.message.chat.id,
+                                     message_id=msg.message_id)
+        except:
+            pass
         await callback.message.answer(text=f'Вы не успели подтвердить заказ № {info_order[0]}!')
 
         # производим рассылку супер админам

@@ -506,7 +506,7 @@ async def process_answer_admin_screenshot(callback: CallbackQuery, state: FSMCon
             await callback.message.answer(text=f'Заявку № {info_order[0]} создал {info_user[2]}\n'
                                                f'стоимость заявки {info_order[9]} руб.\n'
                                                f'Перечислите: по номеру телефона {info_user[6]}\n'
-                                               f' {info_order[9]/2*0.1} руб.')
+                                               f' {info_order[9]*0.4} руб.')
 
     elif answer_admin_screenshot[1] == 'cancel':
         await callback.answer(text='Платеж отклонен', show_alert=True)
