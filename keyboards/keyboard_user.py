@@ -17,6 +17,7 @@ def keyboards_user() -> ReplyKeyboardMarkup:
 
 
 
+
 def keyboards_create_list_category(list_category: list, back: int, forward: int, count: int):
     logging.info("keyboards_create_list_category")
     # считаем сколько всего блоков по заданному количество элементов в блоке
@@ -74,6 +75,38 @@ def keyboard_confirm_list_category() -> None:
                                     callback_data='confirm_user_category')
     button_2 = InlineKeyboardButton(text='Изменить',
                                     callback_data='change_user_category')
+    keyboard = InlineKeyboardMarkup(
+        inline_keyboard=[[button_1], [button_2]],
+    )
+    return keyboard
+
+def keyboards_get_contact() -> ReplyKeyboardMarkup:
+    logging.info("keyboards_get_contact")
+    button_1 = KeyboardButton(text='Отправить свой контакт ☎️', request_contact=True)
+    button_2 = KeyboardButton(text='Отмена')
+    keyboard = ReplyKeyboardMarkup(
+        keyboard=[[button_1]],
+        resize_keyboard=True
+    )
+    return keyboard
+
+def keyboard_confirm_phone() -> None:
+    logging.info("keyboard_confirm_phone")
+    button_1 = InlineKeyboardButton(text='Верно',
+                                    callback_data='confirm_phone')
+    button_2 = InlineKeyboardButton(text='Назад',
+                                    callback_data='getphone_back')
+    keyboard = InlineKeyboardMarkup(
+        inline_keyboard=[[button_1], [button_2]],
+    )
+    return keyboard
+
+def keyboard_confirm_phone_1() -> None:
+    logging.info("keyboard_confirm_phone")
+    button_1 = InlineKeyboardButton(text='Верно',
+                                    callback_data='confirm_phone_1')
+    button_2 = InlineKeyboardButton(text='Изменить',
+                                    callback_data='getphone_back')
     keyboard = InlineKeyboardMarkup(
         inline_keyboard=[[button_1], [button_2]],
     )

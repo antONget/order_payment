@@ -24,7 +24,8 @@ def create_table_users() -> None:
             username TEXT,
             is_admin INTEGER,
             list_category TEXT,
-            rating INTEGER
+            rating INTEGER, 
+            phone TEXT
         )""")
         db.commit()
 
@@ -64,8 +65,8 @@ def add_user(id_user: int, user_name: str) -> None:
         list_user = [row[0] for row in sql.fetchall()]
 
         if int(id_user) not in list_user:
-            sql.execute(f'INSERT INTO users (telegram_id, username, is_admin, list_category, rating) '
-                        f'VALUES ({id_user}, "{user_name}", 0, "0", 0)')
+            sql.execute(f'INSERT INTO users (telegram_id, username, is_admin, list_category, rating, phone) '
+                        f'VALUES ({id_user}, "{user_name}", 0, "0", 0, "0")')
             db.commit()
 
 
@@ -123,6 +124,19 @@ def set_rating(telegram_id: int, rating: int):
         sql.execute('UPDATE users SET rating = ? WHERE telegram_id = ?', (rating, telegram_id))
         db.commit()
 
+
+def set_phone(telegram_id: int, phone: str):
+    """
+    Назначение пользователя с id_telegram администратором
+    :param telegram_id:
+    :param phone:
+    :return:
+    """
+    logging.info(f'set_rating')
+    with db:
+        sql = db.cursor()
+        sql.execute('UPDATE users SET phone = ? WHERE telegram_id = ?', (phone, telegram_id))
+        db.commit()
 
 # АДМИНИСТРАТОРЫ - Разжаловать пользователя из администраторов
 def set_notadmins(telegram_id):

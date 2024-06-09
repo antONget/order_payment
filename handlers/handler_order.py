@@ -362,7 +362,7 @@ async def process_get_report_order(message: Message, bot: Bot, state: FSMContext
                                text=f'Пользователь {message.from_user.username} отправил отчет о выполнении'
                                     f' заявки № {id_order}:\n'
                                     f'{report}')
-    await message.answer(text='Пришлите стоимость выполненной заявки')
+    await message.answer(text='Пришлите стоимость выполненной заявки с вычетом запчастей')
     await state.set_state(Tasks.amount)
 
 
@@ -390,7 +390,7 @@ async def process_get_amount_order(message: Message, bot: Bot, state: FSMContext
                                text=f'Пользователь {message.from_user.username} выполнил'
                                     f' заявку № {id_order} на сумму {amount}')
     price_amount = int(amount/2)
-    await message.answer(text=f'Произведите оплату за полученную заявку № {id_order} в размере {price_amount}'
+    await message.answer(text=f'Произведите оплату за полученную заявку № {id_order} в размере {price_amount} руб. '
                               f'на номер телефона +79135334364 и пришлите боту скриншот об оплате')
     await state.set_state(Tasks.screenshot)
 #     PRICE = f'{price_amount}.00'
@@ -479,6 +479,8 @@ async def get_screenshot_chek(message: Message, bot: Bot, state: FSMContext):
 async def process_answer_admin_screenshot(callback: CallbackQuery, state: FSMContext, bot: Bot):
     logging.info(f'process_answer_admin_screenshot: {callback.message.chat.id}')
     answer_admin_screenshot = callback.data.split('_')
+    await bot.delete_message(chat_id=callback.message.chat.id,
+                             message_id=callback.message.message_id)
     if answer_admin_screenshot[1] == 'confirm':
         await callback.answer(text='Платеж подтвержден', show_alert=True)
         id_telegram_user = int(answer_admin_screenshot[2])
@@ -495,9 +497,17 @@ async def process_answer_admin_screenshot(callback: CallbackQuery, state: FSMCon
         for order in list_order_id_complete:
             total_amount += order[9]
         rating = total_amount // len(list_order_id_complete)
-        set_rating(telegram_id=callback.message.chat.id, rating=rating)
+        set_rating(telegram_id=id_telegram_user, rating=rating)
         info_user = get_info_user(telegram_id=id_telegram_user)
-        await callback.message.answer(text=f'Рейтинг {info_user[2]} обновлен')
+        await callback.message.answer(text=f'Рейтинг {info_user[2]} обновлен!\n')
+        info_order = get_order_id(id_order=id_order)
+        if info_order[2] != callback.message.chat.id:
+            info_user = get_info_user(telegram_id=info_order[2])
+            await callback.message.answer(text=f'Заявку № {info_order[0]} создал {info_user[2]}\n'
+                                               f'стоимость заявки {info_order[9]} руб.\n'
+                                               f'Перечислите: по номеру телефона {info_user[6]}\n'
+                                               f' {info_order[9]/2*0.1} руб.')
+
     elif answer_admin_screenshot[1] == 'cancel':
         await callback.answer(text='Платеж отклонен', show_alert=True)
         id_telegram_user = int(answer_admin_screenshot[2])

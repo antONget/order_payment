@@ -1,17 +1,37 @@
 from aiogram import Router, F, Bot
-from aiogram.types import Message, CallbackQuery
-from aiogram.filters import CommandStart
+from aiogram.types import Message, CallbackQuery, ReplyKeyboardRemove
+from aiogram.filters import CommandStart, or_f
 
 from config_data.config import Config, load_config
-from module.data_base import create_table_users, create_table_category, add_user, get_list_category, get_select, set_select, get_title_category
-from keyboards.keyboard_user import keyboards_user, keyboards_create_list_category, keyboard_confirm_list_category
+from module.data_base import create_table_users, create_table_category, add_user, get_list_category, get_select, \
+    set_select, get_title_category, set_phone, get_info_user
+from keyboards.keyboard_user import keyboards_user, keyboards_create_list_category, keyboard_confirm_list_category, \
+    keyboards_get_contact, keyboard_confirm_phone, keyboard_confirm_phone_1
+
+from aiogram.fsm.context import FSMContext
+from aiogram.filters import StateFilter
+from aiogram.fsm.state import State, StatesGroup, default_state
 
 import logging
-
+import re
 
 router = Router()
 user_dict = {}
 config: Config = load_config()
+
+
+class User(StatesGroup):
+    phone = State()
+
+def validate_russian_phone_number(phone_number):
+    # Паттерн для российских номеров телефона
+    # Российские номера могут начинаться с +7, 8, или без кода страны
+    pattern = re.compile(r'^(\+7|8|7)?(\d{10})$')
+
+    # Проверка соответствия паттерну
+    match = pattern.match(phone_number)
+
+    return bool(match)
 
 
 @router.message(CommandStart())
@@ -245,7 +265,7 @@ async def process_change_command(callback: CallbackQuery, bot: Bot) -> None:
 
 
 @router.callback_query(F.data == 'confirm_user_category')
-async def process_confirm_command(callback: CallbackQuery, bot: Bot) -> None:
+async def process_confirm_command(callback: CallbackQuery, bot: Bot, state: FSMContext) -> None:
     """
     Подтверждение создания состава команды (заявки на игру)
     :param callback:
@@ -256,3 +276,62 @@ async def process_confirm_command(callback: CallbackQuery, bot: Bot) -> None:
     await bot.delete_message(chat_id=callback.message.chat.id,
                              message_id=callback.message.message_id)
     await callback.answer(text='Список категорий успешно помещен в базу', show_alert=True)
+    list_info_user = get_info_user(telegram_id=callback.message.chat.id)
+    if list_info_user[-1] == "0":
+        await callback.message.answer(
+            text='Для получения выплат за размещенные вами заявки укажите номер телефона в поле ввода'
+                 ' или воспользуйтесь кнопкой "Отправить свой контакт ☎️"',
+            reply_markup=keyboards_get_contact())
+        await state.set_state(User.phone)
+    else:
+        await callback.message.answer(text=f'Твой номер телефона, {list_info_user[-1]}. Верно?',
+                                      reply_markup=keyboard_confirm_phone_1())
+
+
+@router.message(or_f(F.text, F.contact), StateFilter(User.phone))
+async def process_validate_russian_phone_number(message: Message, state: FSMContext) -> None:
+    logging.info("process_start_command_user")
+    if message.contact:
+        phone = str(message.contact.phone_number)
+    else:
+        phone = message.text
+        if not validate_russian_phone_number(phone):
+            await message.answer(text="Неверный формат номера. Повторите ввод, например 89991112222:")
+            return
+    await state.update_data(phone=phone)
+    await state.set_state(default_state)
+    await message.answer(text=f'Записываю, {phone}. Верно?',
+                         reply_markup=keyboard_confirm_phone())
+
+
+@router.callback_query(F.data == 'confirm_phone')
+async def process_confirm_phone(callback: CallbackQuery, state: FSMContext, bot: Bot) -> None:
+    logging.info(f'process_confirm_phone: {callback.message.chat.id}')
+    user_dict[callback.message.chat.id] = await state.get_data()
+    phone = user_dict[callback.message.chat.id]['phone']
+    set_phone(telegram_id=callback.message.chat.id, phone=phone)
+    await bot.delete_message(chat_id=callback.message.chat.id,
+                             message_id=callback.message.message_id)
+    await callback.message.answer(text='Номер телефона успешно занесен в базу',
+                                  reply_markup=ReplyKeyboardRemove())
+    await callback.message.answer(text=f"Здесь можно получить и создать заявку",
+                                  reply_markup=keyboards_user())
+
+
+@router.callback_query(F.data == 'confirm_phone_1')
+async def process_confirm_phone_1(callback: CallbackQuery, bot: Bot) -> None:
+    logging.info(f'process_confirm_phone_1: {callback.message.chat.id}')
+    await bot.delete_message(chat_id=callback.message.chat.id,
+                             message_id=callback.message.message_id)
+
+
+@router.callback_query(F.data == 'getphone_back')
+async def process_confirm_username(callback: CallbackQuery, bot: Bot, state: FSMContext) -> None:
+    logging.info(f'process_confirm_username: {callback.message.chat.id}')
+    await bot.delete_message(chat_id=callback.message.chat.id,
+                             message_id=callback.message.message_id)
+    await callback.message.answer(
+        text='Для получения выплат за размещенные вами заявки укажите номер телефона в поле ввода'
+             ' или воспользуйтесь кнопкой "Отправить свой контакт ☎️"',
+        reply_markup=keyboards_get_contact())
+    await state.set_state(User.phone)
