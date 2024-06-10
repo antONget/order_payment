@@ -8,7 +8,7 @@ from aiogram.fsm.state import State, StatesGroup, default_state
 
 from filter.admin_filter import check_admin
 from config_data.config import Config, load_config
-from keyboards.keyboards_create_order import keyboards_set_category, keyboard_mailer_order, keyboard_get_order, keyboard_contract
+from keyboards.keyboards_create_order import keyboards_set_category, keyboard_mailer_order, keyboard_get_order, keyboard_contract, keyboard_reassert_contract
 from module.data_base import get_list_order, get_list_notadmins_mailer, get_list_category, get_title_category,\
     create_table_order, add_order, create_table_category, set_mailer_order, set_status_order, set_user_order,\
     get_order_id, get_list_users, get_list_order_id_not_complete, get_info_user, set_id_cancel_order
@@ -477,16 +477,16 @@ async def getorder_confirm(callback: CallbackQuery, bot: Bot) -> None:
 
 @router.callback_query(F.data.startswith('contract'))
 async def getorder_contract(callback: CallbackQuery, bot: Bot) -> None:
-    logging.info(f'getorder_confirm: {callback.message.chat.id}')
+    logging.info(f'getorder_contract: {callback.message.chat.id}')
     contract = callback.data.split('_')
     id_order = int(contract[2])
     if contract[1] == 'cancel':
-        # обновляем статус
-        set_status_order(id_order=id_order,
-                         status='not_contract')
-        # обнуляем исполнителя
-        set_user_order(id_order=id_order,
-                       id_user=0)
+        # # обновляем статус
+        # set_status_order(id_order=id_order,
+        #                  status='not_contract')
+        # # обнуляем исполнителя
+        # set_user_order(id_order=id_order,
+        #                id_user=0)
 
         # производим рассылку супер админам
         list_super_admin = config.tg_bot.admin_ids.split(',')
@@ -494,19 +494,24 @@ async def getorder_contract(callback: CallbackQuery, bot: Bot) -> None:
             result = get_telegram_user(user_id=int(id_superadmin),
                                        bot_token=config.tg_bot.token)
             if 'result' in result:
+                info_user = get_info_user(telegram_id=callback.message.chat.id)
                 await bot.send_message(chat_id=int(id_superadmin),
-                                       text=f'Пользователь {callback.from_user.username} не договорился по'
-                                            f' заявке № {id_order}. Заявке запущена на повторную рассылку.')
+                                       text=f'Пользователь {callback.from_user.username} (тел: {info_user[-1]}) не договорился по'
+                                            f' заявке № {id_order}. Пользователь ожидает ваше решение.',
+                                       reply_markup=keyboard_reassert_contract(id_order=id_order,
+                                                                               id_telegram=callback.message.chat.id,
+                                                                               message_id=callback.message.message_id))
         info_order = get_order_id(id_order=id_order)
         result = get_telegram_user(user_id=info_order[2],
                                    bot_token=config.tg_bot.token)
         if 'result' in result and info_order[2] not in map(int, list_super_admin):
             await bot.send_message(chat_id=info_order[2],
                                    text=f'Пользователь {callback.from_user.username} не договорился по'
-                                        f' заявке № {id_order}. Заявке запущена на повторную рассылку.')
-        await bot.delete_message(chat_id=callback.message.chat.id,
-                                 message_id=callback.message.message_id)
-        await process_mailer(bot=bot)
+                                        f' заявке № {id_order}.')
+        # await bot.delete_message(chat_id=callback.message.chat.id,
+        #                          message_id=callback.message.message_id)
+        # await process_mailer(bot=bot)
+        await callback.message.answer(text=f"Информация передана администратору, ожидайте его решение")
 
     elif contract[1] == 'confirm':
         # обновляем статус
@@ -532,3 +537,32 @@ async def getorder_contract(callback: CallbackQuery, bot: Bot) -> None:
                                  message_id=callback.message.message_id)
         await callback.message.answer(text=f'Для внесения информации о ходе выполнения заявки и для ее закрытия'
                                            f' воспользуйтесь кнопкой "Заявки" в главном меню',)
+
+
+@router.callback_query(F.data.startswith('reassert'))
+async def process_reassert(callback: CallbackQuery, bot: Bot) -> None:
+    logging.info(f'process_reassert: {callback.message.chat.id}')
+    info_callback = callback.data.split('_')
+    print(callback.data)
+    if "cancel" in info_callback[0]:
+        print("cancel")
+        # обновляем статус
+        set_status_order(id_order=int(info_callback[1]),
+                         status='not_contract')
+        # обнуляем исполнителя
+        set_user_order(id_order=int(info_callback[1]),
+                       id_user=0)
+        await bot.delete_message(chat_id=int(info_callback[2]),
+                                 message_id=int(info_callback[3]))
+        await bot.delete_message(chat_id=callback.message.chat.id,
+                                 message_id=callback.message.message_id)
+        await bot.send_message(chat_id=int(info_callback[2]),
+                               text='Информация подтверждена, заявка с вас снята')
+        await callback.answer(text='Информация подтверждена, заявка снята с пользователя')
+        await process_mailer(bot=bot)
+    else:
+        await bot.send_message(chat_id=int(info_callback[2]),
+                               text='Информация не подтверждена')
+        await bot.delete_message(chat_id=callback.message.chat.id,
+                                 message_id=callback.message.message_id)
+        await callback.answer(text='Информация не подтверждена, заявка осталась у пользователя')

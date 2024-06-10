@@ -88,3 +88,14 @@ def keyboard_contract(id_order: int) -> None:
         inline_keyboard=[[button_1, button_2]],
     )
     return keyboard
+
+def keyboard_reassert_contract(id_order: int, id_telegram: int, message_id: int) -> None:
+    logging.info("keyboard_get_order")
+    button_1 = InlineKeyboardButton(text='Подтвердить',
+                                    callback_data=f'reassertcancel_{id_order}_{id_telegram}_{message_id}')
+    button_2 = InlineKeyboardButton(text='НЕ подтверждать',
+                                    callback_data=f'reassert_{id_order}_{id_telegram}_{message_id}')
+    keyboard = InlineKeyboardMarkup(
+        inline_keyboard=[[button_1, button_2]],
+    )
+    return keyboard

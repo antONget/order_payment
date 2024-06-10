@@ -37,7 +37,7 @@ async def all_message(message: Message) -> None:
             list_user = get_list_users()
             text = 'Список пользователей:\n'
             for i, user in enumerate(list_user):
-                text += f'{i+1}. {user[1]} - {user[2]}\n'
+                text += f'{i+1}. {user[1]} - {user[2]} - {user[-1]}\n'
                 if i % 20 == 0 and i > 0:
                     await message.answer(text=text)
                     text = ''
