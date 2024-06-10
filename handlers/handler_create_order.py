@@ -490,6 +490,7 @@ async def getorder_contract(callback: CallbackQuery, bot: Bot) -> None:
 
         # производим рассылку супер админам
         list_super_admin = config.tg_bot.admin_ids.split(',')
+        info_order = get_order_id(id_order=id_order)
         for id_superadmin in list_super_admin:
             result = get_telegram_user(user_id=int(id_superadmin),
                                        bot_token=config.tg_bot.token)
@@ -497,11 +498,15 @@ async def getorder_contract(callback: CallbackQuery, bot: Bot) -> None:
                 info_user = get_info_user(telegram_id=callback.message.chat.id)
                 await bot.send_message(chat_id=int(id_superadmin),
                                        text=f'Пользователь {callback.from_user.username} (тел: {info_user[-1]}) не договорился по'
-                                            f' заявке № {id_order}. Пользователь ожидает ваше решение.',
+                                            f' заявке № {id_order}.\n'
+                                            f'Категория: {get_title_category(id_category=info_order[5])}\n'
+                                            f'Описание:{info_order[3]}\n'
+                                            f'Контакты:{info_order[4]}\n'
+                                            f'Пользователь ожидает ваше решение.',
                                        reply_markup=keyboard_reassert_contract(id_order=id_order,
                                                                                id_telegram=callback.message.chat.id,
                                                                                message_id=callback.message.message_id))
-        info_order = get_order_id(id_order=id_order)
+
         result = get_telegram_user(user_id=info_order[2],
                                    bot_token=config.tg_bot.token)
         if 'result' in result and info_order[2] not in map(int, list_super_admin):
