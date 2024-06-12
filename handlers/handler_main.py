@@ -47,8 +47,9 @@ async def process_start_command_admin(message: Message) -> None:
 async def process_support(message: Message) -> None:
     logging.info("process_support")
     await message.answer(text=f'Если у вас возникли вопросы или предложения по работе бота,'
-                              f' то можете их задать <a href="https://ya.ru/">менеджеру проекта</a>, '
-                              f'а также воспользоваться поддержкой комьюнити в <a href="https://ya.ru/">общем чате</a>',
+                              f' то можете их задать <a href="https://t.me/Roman_holod24">менеджеру проекта</a>, '
+                              f'а также воспользоваться поддержкой комьюнити в'
+                              f' <a href="https://t.me/+VPOiR01TArg0Mjgy">общем чате</a>',
                          disable_web_page_preview=True,
                          parse_mode='html')
 
