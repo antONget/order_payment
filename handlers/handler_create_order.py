@@ -206,7 +206,7 @@ async def process_mailer(bot: Bot):
     list_sorted_user = sorted(list_mailer, key=lambda mailer: mailer[5], reverse=True)
     print(list_sorted_user)
     # получаем список заявок
-    list_order = get_list_order()
+    list_order = get_list_order()[::-1]
     # 1 - проходим по списку заявок
     for order in list_order:
         # если заявка находится на стадии досыльных сообщений пользователю то не запускаем рассылку
