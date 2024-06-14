@@ -433,13 +433,14 @@ async def getorder_confirm(callback: CallbackQuery, bot: Bot) -> None:
     info_order = get_order_id(id_order=id_order)
     title_category = get_title_category(info_order[5])
     msg = await callback.message.answer(text=f'Вы взяли в работу заявку № {id_order}.\n'
-                                       f'Категория:{title_category}'
-                                       f'Описание: {info_order[3]}\n'
-                                       f'Контакты: {info_order[4]}\n\n'
-                                       f'Если не договорились с клиентом то обязательно нажмите "НЕ договорились".\n\n'
-                                       f'Для внесения информации о ходе выполнения заявки и для ее закрытия'
-                                       f' воспользуйтесь кнопкой "Заявки" в главном меню',
-                                  reply_markup=keyboard_contract(id_order=id_order))
+                                             f'Категория:{title_category}\n'
+                                             f'Описание: {info_order[3]}\n'
+                                             f'Контакты: {info_order[4]}\n\n'
+                                             f'Если не договорились с клиентом то обязательно нажмите'
+                                             f' "НЕ договорились".\n\n'
+                                             f'Для внесения информации о ходе выполнения заявки и для ее закрытия'
+                                             f' воспользуйтесь кнопкой "Заявки" в главном меню',
+                                        reply_markup=keyboard_contract(id_order=id_order))
     # время
     await asyncio.sleep(60 * 10)
     info_order = get_order_id(id_order=id_order)
