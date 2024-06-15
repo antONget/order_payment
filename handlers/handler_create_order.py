@@ -362,6 +362,8 @@ async def getorder_cancel(callback: CallbackQuery, bot: Bot) -> None:
     set_status_order(id_order=id_order, status='three_minute')
     # получаем список супер-админов для информирования
     list_super_admin = config.tg_bot.admin_ids.split(',')
+    info_order = get_order_id(id_order=id_order)
+
     # производим рассылку информационного сообщения
     for id_superadmin in list_super_admin:
         result = get_telegram_user(user_id=int(id_superadmin),
@@ -369,11 +371,18 @@ async def getorder_cancel(callback: CallbackQuery, bot: Bot) -> None:
         if 'result' in result:
             await bot.send_message(chat_id=int(id_superadmin),
                                    text=f'Пользователь {callback.from_user.username} отказался от'
-                                        f' выполнения заявки № {id_order}'
-                                        f'Номер телефона пользователя {callback.from_user.username}:'
-                                        f' {get_info_user(callback.message.chat.id)[-1]}'
-                                        f'Описание заявки № {id_order}:'
-                                        f' {get_order_id(id_order=id_order)[3]}')
+                                        f' выполнения заявки № {id_order}\n\n'
+                                        f'Номер телефона мастера {callback.from_user.username}:'
+                                        f' {get_info_user(callback.message.chat.id)[-1]}\n'
+                                        f'Информация о заявке № {id_order}:\n'
+                                        f'Дата заявки: {info_order[1]}\n'
+                                        f'Создатель заявки: @{get_info_user(info_order[2])[2]}-{get_info_user(info_order[2])[1]}\n'
+                                        f'Описание заявки: {info_order[3]}\n'
+                                        f'Контакты клиента: {info_order[4]}\n'
+                                        f'Категория заявки: {info_order[5]}\n'
+                                        f'Статус заявки: {info_order[7]}\n'
+                                        f'Исполнитель заявки: @{get_info_user(info_order[8])[2]}-{get_info_user(info_order[8])[1]}\n'
+                                        f'Стоимость заявки: {info_order[9]}')
     #         id INTEGER PRIMARY KEY,
     #         time_order TEXT,
     #         id_creator INTEGER,
@@ -385,7 +394,7 @@ async def getorder_cancel(callback: CallbackQuery, bot: Bot) -> None:
     #         id_user INTEGER,
     #         amount INTEGER,
     #         report TEXT
-    info_order = get_order_id(id_order=id_order)
+
     # id_cancel_str = info_order[11]
     # list_id_cancel = id_cancel_str.split(',')
     # print("list_id_cancel",list_id_cancel)
@@ -419,18 +428,27 @@ async def getorder_confirm(callback: CallbackQuery, bot: Bot) -> None:
                    id_user=callback.message.chat.id)
     # производим рассылку супер админам
     list_super_admin = config.tg_bot.admin_ids.split(',')
+    info_order = get_order_id(id_order=id_order)
+
     for id_superadmin in list_super_admin:
         result = get_telegram_user(user_id=int(id_superadmin),
                                    bot_token=config.tg_bot.token)
         if 'result' in result:
             await bot.send_message(chat_id=int(id_superadmin),
                                    text=f'Пользователь {callback.from_user.username} взял'
-                                        f' заявку № {id_order}'
-                                        f'Номер телефона пользователя {callback.from_user.username}:'
-                                        f' {get_info_user(callback.message.chat.id)[-1]}'
-                                        f'Описание заявки № {id_order}:'
-                                        f' {get_order_id(id_order=id_order)[3]}')
-    info_order = get_order_id(id_order=id_order)
+                                        f' заявку № {id_order}\n\n'
+                                        f'Номер телефона мастера {callback.from_user.username}:'
+                                        f' {get_info_user(callback.message.chat.id)[-1]}\n'
+                                        f'Информация о заявке № {id_order}:\n'
+                                        f'Дата заявки: {info_order[1]}\n'
+                                        f'Создатель заявки: @{get_info_user(info_order[2])[2]}-{get_info_user(info_order[2])[1]}\n'
+                                        f'Описание заявки: {info_order[3]}\n'
+                                        f'Контакты клиента: {info_order[4]}\n'
+                                        f'Категория заявки: {info_order[5]}\n'
+                                        f'Статус заявки: {info_order[7]}\n'
+                                        f'Исполнитель заявки: @{get_info_user(info_order[8])[2]}-{get_info_user(info_order[8])[1]}\n'
+                                        f'Стоимость заявки: {info_order[9]}')
+
     result = get_telegram_user(user_id=info_order[2],
                                bot_token=config.tg_bot.token)
     if 'result' in result and info_order[2] not in map(int, list_super_admin):
@@ -464,6 +482,8 @@ async def getorder_confirm(callback: CallbackQuery, bot: Bot) -> None:
 
         # производим рассылку супер админам
         list_super_admin = config.tg_bot.admin_ids.split(',')
+        info_order = get_order_id(id_order=id_order)
+
         for id_superadmin in list_super_admin:
             result = get_telegram_user(user_id=int(id_superadmin),
                                        bot_token=config.tg_bot.token)
@@ -471,11 +491,18 @@ async def getorder_confirm(callback: CallbackQuery, bot: Bot) -> None:
                 await bot.send_message(chat_id=int(id_superadmin),
                                        text=f'Пользователь {callback.from_user.username} не успел подтвердить заказ'
                                             f' № {id_order}. Заказ запущен на повторную рассылку'
-                                            f'Номер телефона пользователя {callback.from_user.username}:'
-                                            f' {get_info_user(callback.message.chat.id)[-1]}'
-                                            f'Описание заявки № {id_order}:'
-                                            f' {get_order_id(id_order=id_order)[3]}')
-        info_order = get_order_id(id_order=id_order)
+                                            f'Номер телефона мастера {callback.from_user.username}:'
+                                            f' {get_info_user(callback.message.chat.id)[-1]}\n'
+                                            f'Информация о заявке № {id_order}:\n'
+                                            f'Дата заявки: {info_order[1]}\n'
+                                            f'Создатель заявки: @{get_info_user(info_order[2])[2]}-{get_info_user(info_order[2])[1]}\n'
+                                            f'Описание заявки: {info_order[3]}\n'
+                                            f'Контакты клиента: {info_order[4]}\n'
+                                            f'Категория заявки: {info_order[5]}\n'
+                                            f'Статус заявки: {info_order[7]}\n'
+                                            f'Исполнитель заявки: @{get_info_user(info_order[8])[2]}-{get_info_user(info_order[8])[1]}\n'
+                                            f'Стоимость заявки: {info_order[9]}')
+
         result = get_telegram_user(user_id=info_order[2],
                                    bot_token=config.tg_bot.token)
         if 'result' in result and info_order[2] not in map(int, list_super_admin):
@@ -511,11 +538,18 @@ async def getorder_contract(callback: CallbackQuery, bot: Bot) -> None:
                 info_user = get_info_user(telegram_id=callback.message.chat.id)
                 await bot.send_message(chat_id=int(id_superadmin),
                                        text=f'Пользователь {callback.from_user.username} (тел: {info_user[-1]}) не договорился по'
-                                            f' заявке № {id_order}.\n'
-                                            f'Категория: {get_title_category(id_category=info_order[5])}\n'
-                                            f'Описание:{info_order[3]}\n'
-                                            f'Контакты:{info_order[4]}\n'
-                                            f'Пользователь ожидает ваше решение.',
+                                            f' заявке № {id_order}. Пользователь ожидает ваше решение.\n\n'
+                                            f'Номер телефона мастера {callback.from_user.username}:'
+                                            f' {get_info_user(callback.message.chat.id)[-1]}\n'
+                                            f'Информация о заявке № {id_order}:\n'
+                                            f'Дата заявки: {info_order[1]}\n'
+                                            f'Создатель заявки: @{get_info_user(info_order[2])[2]}-{get_info_user(info_order[2])[1]}\n'
+                                            f'Описание заявки: {info_order[3]}\n'
+                                            f'Контакты клиента: {info_order[4]}\n'
+                                            f'Категория заявки: {info_order[5]}\n'
+                                            f'Статус заявки: {info_order[7]}\n'
+                                            f'Исполнитель заявки: @{get_info_user(info_order[8])[2]}-{get_info_user(info_order[8])[1]}\n'
+                                            f'Стоимость заявки: {info_order[9]}',
                                        reply_markup=keyboard_reassert_contract(id_order=id_order,
                                                                                id_telegram=callback.message.chat.id,
                                                                                message_id=callback.message.message_id))
@@ -537,18 +571,27 @@ async def getorder_contract(callback: CallbackQuery, bot: Bot) -> None:
                          status='yes_contract')
         # производим рассылку супер админам
         list_super_admin = config.tg_bot.admin_ids.split(',')
+        info_order = get_order_id(id_order=id_order)
+
         for id_superadmin in list_super_admin:
             result = get_telegram_user(user_id=int(id_superadmin),
                                        bot_token=config.tg_bot.token)
             if 'result' in result:
                 await bot.send_message(chat_id=int(id_superadmin),
                                        text=f'Пользователь {callback.from_user.username} договорился по'
-                                            f' заявке № {id_order}.'
-                                            f'Номер телефона пользователя {callback.from_user.username}:'
-                                            f' {get_info_user(callback.message.chat.id)[-1]}'
-                                            f'Описание заявки № {id_order}:'
-                                            f' {get_order_id(id_order=id_order)[3]}')
-        info_order = get_order_id(id_order=id_order)
+                                            f' заявке № {id_order}.\n\n'
+                                            f'Номер телефона мастера {callback.from_user.username}:'
+                                            f' {get_info_user(callback.message.chat.id)[-1]}\n'
+                                            f'Информация о заявке № {id_order}:\n'
+                                            f'Дата заявки: {info_order[1]}\n'
+                                            f'Создатель заявки: @{get_info_user(info_order[2])[2]}-{get_info_user(info_order[2])[1]}\n'
+                                            f'Описание заявки: {info_order[3]}\n'
+                                            f'Контакты клиента: {info_order[4]}\n'
+                                            f'Категория заявки: {info_order[5]}\n'
+                                            f'Статус заявки: {info_order[7]}\n'
+                                            f'Исполнитель заявки: @{get_info_user(info_order[8])[2]}-{get_info_user(info_order[8])[1]}\n'
+                                            f'Стоимость заявки: {info_order[9]}')
+
         result = get_telegram_user(user_id=info_order[2],
                                    bot_token=config.tg_bot.token)
         if 'result' in result and info_order[2] not in map(int, list_super_admin):
