@@ -228,7 +228,11 @@ async def process_order_change_status(callback: CallbackQuery, bot: Bot, state: 
             if 'result' in result:
                 await bot.send_message(chat_id=int(id_superadmin),
                                        text=f'Пользователь {callback.from_user.username} изменил статус'
-                                            f' заявки № {id_order} на "Согласовано время"')
+                                            f' заявки № {id_order} на "Согласовано время"'
+                                            f'Номер телефона пользователя {callback.from_user.username}:'
+                                            f' {get_info_user(callback.message.chat.id)[-1]}'
+                                            f'Описание заявки № {id_order}:'
+                                            f' {get_order_id(id_order=id_order)[3]}')
         info_order = get_order_id(id_order=id_order)
         result = get_telegram_user(user_id=info_order[2],
                                    bot_token=config.tg_bot.token)
@@ -269,7 +273,11 @@ async def process_order_change_status(callback: CallbackQuery, bot: Bot, state: 
             if 'result' in result:
                 await bot.send_message(chat_id=int(id_superadmin),
                                        text=f'Пользователь {callback.from_user.username} выполнил'
-                                            f' заявку № {id_order} и готов представить отчет')
+                                            f' заявку № {id_order} и готов представить отчет'
+                                            f'Номер телефона пользователя {callback.from_user.username}:'
+                                            f' {get_info_user(callback.message.chat.id)[-1]}'
+                                            f'Описание заявки № {id_order}:'
+                                            f' {get_order_id(id_order=id_order)[3]}')
         info_order = get_order_id(id_order=id_order)
         result = get_telegram_user(user_id=info_order[2],
                                    bot_token=config.tg_bot.token)
@@ -307,7 +315,11 @@ async def process_order_comment_add(callback: CallbackQuery, bot: Bot, state: FS
         if 'result' in result:
             await bot.send_message(chat_id=int(id_superadmin),
                                    text=f'К заказу № {id_order} добавлен комментарий\n'
-                                        f'{comment}')
+                                        f'{comment}'
+                                        f'Номер телефона пользователя {callback.from_user.username}:'
+                                        f' {get_info_user(callback.message.chat.id)[-1]}'
+                                        f'Описание заявки № {id_order}:'
+                                        f' {get_order_id(id_order=id_order)[3]}')
     info_order = get_order_id(id_order=id_order)
     result = get_telegram_user(user_id=info_order[2],
                                bot_token=config.tg_bot.token)
@@ -353,7 +365,11 @@ async def process_get_report_order(message: Message, bot: Bot, state: FSMContext
             await bot.send_message(chat_id=int(id_superadmin),
                                    text=f'Пользователь {message.from_user.username} отправил отчет о выполнении'
                                         f' заявки № {id_order}:\n'
-                                        f'{report}')
+                                        f'{report}'
+                                        f'Номер телефона пользователя {message.from_user.username}:'
+                                        f' {get_info_user(message.message.chat.id)[-1]}'
+                                        f'Описание заявки № {id_order}:'
+                                        f' {get_order_id(id_order=id_order)[3]}')
     info_order = get_order_id(id_order=id_order)
     result = get_telegram_user(user_id=info_order[2],
                                bot_token=config.tg_bot.token)
@@ -381,7 +397,11 @@ async def process_get_amount_order(message: Message, bot: Bot, state: FSMContext
         if 'result' in result:
             await bot.send_message(chat_id=int(id_superadmin),
                                    text=f'Пользователь {message.from_user.username} выполнил'
-                                        f' заявку № {id_order} на сумму {amount}')
+                                        f' заявку № {id_order} на сумму {amount}'
+                                        f'Номер телефона пользователя {message.from_user.username}:'
+                                        f' {get_info_user(message.message.chat.id)[-1]}'
+                                        f'Описание заявки № {id_order}:'
+                                        f' {get_order_id(id_order=id_order)[3]}')
     info_order = get_order_id(id_order=id_order)
     result = get_telegram_user(user_id=info_order[2],
                                bot_token=config.tg_bot.token)
@@ -391,7 +411,8 @@ async def process_get_amount_order(message: Message, bot: Bot, state: FSMContext
                                     f' заявку № {id_order} на сумму {amount}')
     price_amount = int(amount/2)
     await message.answer(text=f'Произведите оплату за полученную заявку № {id_order} в размере {price_amount} руб. '
-                              f'на номер телефона +79135334364 и пришлите боту скриншот об оплате')
+                              f'на  карту 4893470444515362 ВТБ или по номеру телефона +79135334364'
+                              f' и пришлите боту скриншот об оплате')
     await state.set_state(Tasks.screenshot)
 #     PRICE = f'{price_amount}.00'
 #     payment_url, payment_id = create_payment(amount=PRICE, chat_id=message.chat.id)

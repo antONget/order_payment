@@ -369,7 +369,11 @@ async def getorder_cancel(callback: CallbackQuery, bot: Bot) -> None:
         if 'result' in result:
             await bot.send_message(chat_id=int(id_superadmin),
                                    text=f'Пользователь {callback.from_user.username} отказался от'
-                                        f' выполнения заявки № {id_order}')
+                                        f' выполнения заявки № {id_order}'
+                                        f'Номер телефона пользователя {callback.from_user.username}:'
+                                        f' {get_info_user(callback.message.chat.id)[-1]}'
+                                        f'Описание заявки № {id_order}:'
+                                        f' {get_order_id(id_order=id_order)[3]}')
     #         id INTEGER PRIMARY KEY,
     #         time_order TEXT,
     #         id_creator INTEGER,
@@ -394,8 +398,8 @@ async def getorder_cancel(callback: CallbackQuery, bot: Bot) -> None:
     if 'result' in result and info_order[2] not in map(int, list_super_admin):
         await bot.send_message(chat_id=info_order[2],
                                text=f'Пользователь {callback.from_user.username} отказался от'
-                                    f' выполнения заявки № {id_order}')
-    print(f'Пользователь {callback.from_user.username} отказался от выполнения заявки № {id_order}')
+                                    f' выполнения заявки № {id_order}.')
+    # print(f'Пользователь {callback.from_user.username} отказался от выполнения заявки № {id_order}')
     await process_mailer(bot=bot)
 
 
@@ -421,14 +425,18 @@ async def getorder_confirm(callback: CallbackQuery, bot: Bot) -> None:
         if 'result' in result:
             await bot.send_message(chat_id=int(id_superadmin),
                                    text=f'Пользователь {callback.from_user.username} взял'
-                                        f' заявку № {id_order}')
+                                        f' заявку № {id_order}'
+                                        f'Номер телефона пользователя {callback.from_user.username}:'
+                                        f' {get_info_user(callback.message.chat.id)[-1]}'
+                                        f'Описание заявки № {id_order}:'
+                                        f' {get_order_id(id_order=id_order)[3]}')
     info_order = get_order_id(id_order=id_order)
     result = get_telegram_user(user_id=info_order[2],
                                bot_token=config.tg_bot.token)
     if 'result' in result and info_order[2] not in map(int, list_super_admin):
         await bot.send_message(chat_id=info_order[2],
                                text=f'Пользователь {callback.from_user.username} взял'
-                                    f' заявку № {id_order}')
+                                    f' заявку № {id_order}.')
     # получаем информацию о заказе
     info_order = get_order_id(id_order=id_order)
     title_category = get_title_category(info_order[5])
@@ -462,14 +470,18 @@ async def getorder_confirm(callback: CallbackQuery, bot: Bot) -> None:
             if 'result' in result:
                 await bot.send_message(chat_id=int(id_superadmin),
                                        text=f'Пользователь {callback.from_user.username} не успел подтвердить заказ'
-                                            f' № {id_order}. Заказ запущен на повторную рассылку')
+                                            f' № {id_order}. Заказ запущен на повторную рассылку'
+                                            f'Номер телефона пользователя {callback.from_user.username}:'
+                                            f' {get_info_user(callback.message.chat.id)[-1]}'
+                                            f'Описание заявки № {id_order}:'
+                                            f' {get_order_id(id_order=id_order)[3]}')
         info_order = get_order_id(id_order=id_order)
         result = get_telegram_user(user_id=info_order[2],
                                    bot_token=config.tg_bot.token)
         if 'result' in result and info_order[2] not in map(int, list_super_admin):
             await bot.send_message(chat_id=info_order[2],
                                    text=f'Пользователь {callback.from_user.username} не успел подтвердить заказ'
-                                        f' № {id_order}. Заказ запущен на повторную рассылку')
+                                        f' № {id_order}. Заказ запущен на повторную рассылку.')
         # устанавливаем исполнителя
         set_user_order(id_order=id_order,
                        id_user=0)
@@ -531,7 +543,11 @@ async def getorder_contract(callback: CallbackQuery, bot: Bot) -> None:
             if 'result' in result:
                 await bot.send_message(chat_id=int(id_superadmin),
                                        text=f'Пользователь {callback.from_user.username} договорился по'
-                                            f' заявке № {id_order}.')
+                                            f' заявке № {id_order}.'
+                                            f'Номер телефона пользователя {callback.from_user.username}:'
+                                            f' {get_info_user(callback.message.chat.id)[-1]}'
+                                            f'Описание заявки № {id_order}:'
+                                            f' {get_order_id(id_order=id_order)[3]}')
         info_order = get_order_id(id_order=id_order)
         result = get_telegram_user(user_id=info_order[2],
                                    bot_token=config.tg_bot.token)
