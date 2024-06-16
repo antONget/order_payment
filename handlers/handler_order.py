@@ -456,8 +456,7 @@ async def process_get_amount_order(message: Message, bot: Bot, state: FSMContext
                                     f' заявку № {id_order} на сумму {amount}')
     price_amount = int(amount/2)
     await message.answer(text=f'Произведите оплату за полученную заявку № {id_order} в размере {price_amount} руб. '
-                              f'на  карту 4893470444515362 ВТБ или по номеру телефона +79135334364'
-                              f' и пришлите боту скриншот об оплате')
+                              f'на  карту 4893470444515362 ВТБ и пришлите боту скриншот об оплате')
     await state.set_state(Tasks.screenshot)
 #     PRICE = f'{price_amount}.00'
 #     payment_url, payment_id = create_payment(amount=PRICE, chat_id=message.chat.id)

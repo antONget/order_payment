@@ -490,7 +490,7 @@ async def getorder_confirm(callback: CallbackQuery, bot: Bot) -> None:
             if 'result' in result:
                 await bot.send_message(chat_id=int(id_superadmin),
                                        text=f'Пользователь {callback.from_user.username} не успел подтвердить заказ'
-                                            f' № {id_order}. Заказ запущен на повторную рассылку'
+                                            f' № {id_order}. Заказ запущен на повторную рассылку.\n\n'
                                             f'Номер телефона мастера {callback.from_user.username}:'
                                             f' {get_info_user(callback.message.chat.id)[-1]}\n'
                                             f'Информация о заявке № {id_order}:\n'
