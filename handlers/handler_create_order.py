@@ -278,12 +278,15 @@ async def process_mailer(bot: Bot):
                         set_status_order(id_order=order[0], status='one_minute')
                         title_category = get_title_category(order[5])
                         # отправляем ему сообщение
-                        msg1 = await bot.send_message(chat_id=user[1],
-                                                      text=f'Поступила заявка\n'
-                                                           f'Заявка № {order[0]}.\n'
-                                                           f'Категория: {title_category}\n'
-                                                           f'Описание: {order[3]}\n',
-                                                      reply_markup=keyboard_get_order(id_order=order[0]))
+                        try:
+                            msg1 = await bot.send_message(chat_id=user[1],
+                                                          text=f'Поступила заявка\n'
+                                                               f'Заявка № {order[0]}.\n'
+                                                               f'Категория: {title_category}\n'
+                                                               f'Описание: {order[3]}\n',
+                                                          reply_markup=keyboard_get_order(id_order=order[0]))
+                        except:
+                            continue
                         # обновляем список рассылки заявки
                         mailer_list.append(user[0])
                         if len(mailer_list) == 1:
@@ -302,15 +305,21 @@ async def process_mailer(bot: Bot):
                     if info_order[8] == 0 and user[0] not in list_id_cancel:
                         if 'result' in result:
                             title_category = get_title_category(order[5])
-                            await bot.delete_message(chat_id=user[1],
-                                                     message_id=msg1.message_id)
+                            try:
+                                await bot.delete_message(chat_id=user[1],
+                                                         message_id=msg1.message_id)
+                            except:
+                                pass
                             # отправляем ему сообщение
-                            msg2 = await bot.send_message(chat_id=user[1],
-                                                          text=f'У вас еще есть шанс взять заявку\n'
-                                                               f'Заявка № {order[0]}.\n'
-                                                               f'Категория: {title_category}\n'
-                                                               f'Описание: {order[3]}\n',
-                                                          reply_markup=keyboard_get_order(id_order=order[0]))
+                            try:
+                                msg2 = await bot.send_message(chat_id=user[1],
+                                                              text=f'У вас еще есть шанс взять заявку\n'
+                                                                   f'Заявка № {order[0]}.\n'
+                                                                   f'Категория: {title_category}\n'
+                                                                   f'Описание: {order[3]}\n',
+                                                              reply_markup=keyboard_get_order(id_order=order[0]))
+                            except:
+                                pass
                     else:
                         return
 
@@ -322,15 +331,21 @@ async def process_mailer(bot: Bot):
                     if info_order[8] == 0 and user[0] not in list_id_cancel:
                         if 'result' in result:
                             title_category = get_title_category(order[5])
-                            await bot.delete_message(chat_id=user[1],
-                                                     message_id=msg2.message_id)
+                            try:
+                                await bot.delete_message(chat_id=user[1],
+                                                         message_id=msg2.message_id)
+                            except:
+                                pass
                             # отправляем ему сообщение
-                            msg3 = await bot.send_message(chat_id=user[1],
-                                                          text=f'Последняя попытка взять заказ\n'
-                                                               f'Заявка № {order[0]}.\n'
-                                                               f'Категория: {title_category}\n'
-                                                               f'Описание: {order[3]}\n',
-                                                          reply_markup=keyboard_get_order(id_order=order[0]))
+                            try:
+                                msg3 = await bot.send_message(chat_id=user[1],
+                                                              text=f'Последняя попытка взять заказ\n'
+                                                                   f'Заявка № {order[0]}.\n'
+                                                                   f'Категория: {title_category}\n'
+                                                                   f'Описание: {order[3]}\n',
+                                                              reply_markup=keyboard_get_order(id_order=order[0]))
+                            except:
+                                pass
                     else:
                         return
                     await asyncio.sleep(1 * 60)
@@ -339,9 +354,11 @@ async def process_mailer(bot: Bot):
                     # если исполнитель еще не определен и пользователь не отказался от заказа
                     if info_order[8] == 0 and user[0] not in list_id_cancel:
                         if 'result' in result:
-                            print(info_order[7])
-                            await bot.delete_message(chat_id=user[1],
-                                                     message_id=msg3.message_id)
+                            try:
+                                await bot.delete_message(chat_id=user[1],
+                                                         message_id=msg3.message_id)
+                            except:
+                                pass
                             set_status_order(id_order=order[0], status='three_minute')
                     else:
                         return
@@ -354,8 +371,11 @@ async def process_mailer(bot: Bot):
 async def getorder_cancel(callback: CallbackQuery, bot: Bot) -> None:
     logging.info(f'process_forward: {callback.message.chat.id}')
     # удаляем сообщение у пользователя
-    await bot.delete_message(chat_id=callback.message.chat.id,
-                             message_id=callback.message.message_id)
+    try:
+        await bot.delete_message(chat_id=callback.message.chat.id,
+                                 message_id=callback.message.message_id)
+    except:
+        pass
     # получаем номер заказа из callback_data
     id_order = int(callback.data.split('_')[2])
     # обновляем статус заявки, для запуска рассылки другим пользователям
