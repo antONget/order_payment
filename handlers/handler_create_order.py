@@ -68,7 +68,7 @@ async def get_description_order(message: Message, state: FSMContext) -> None:
 @router.message(F.text, StateFilter(Order.contact))
 async def get_contact_order(message: Message, state: FSMContext) -> None:
     """
-    Получение контактных данных заявки
+    Получение контактных данных заявки и формирование клавиатуры для выбора категории заявки
     :param message: message.text контакты заявки
     :param state:
     :return:
@@ -76,7 +76,6 @@ async def get_contact_order(message: Message, state: FSMContext) -> None:
     logging.info(f'get_contact_order: {message.chat.id}')
     await state.update_data(contact_order=message.text)
     list_category = get_list_category()
-    print(list_category)
     keyboard = keyboards_set_category(list_category=list_category,
                                       back=0,
                                       forward=2,
@@ -88,6 +87,11 @@ async def get_contact_order(message: Message, state: FSMContext) -> None:
 # >>>>
 @router.callback_query(F.data.startswith('setforward'))
 async def process_setforward(callback: CallbackQuery) -> None:
+    """
+    Действие на пагинацию вперед >>, если в блоке недостаточно места для всех категорий
+    :param callback:
+    :return:
+    """
     logging.info(f'process_setforward: {callback.message.chat.id}')
     list_category = get_list_category()
     forward = int(callback.data.split('_')[1]) + 1
@@ -103,9 +107,15 @@ async def process_setforward(callback: CallbackQuery) -> None:
         await callback.message.edit_text(text='Выберите категорию заявки',
                                          reply_markup=keyboard)
 
+
 # <<<<
 @router.callback_query(F.data.startswith('setback'))
 async def process_setback(callback: CallbackQuery) -> None:
+    """
+    Действие на пагинацию назад <<, если в блоке недостаточно места для всех категорий
+    :param callback:
+    :return:
+    """
     logging.info(f'process_setback: {callback.message.chat.id}')
     list_category = get_list_category()
     back = int(callback.data.split('_')[1]) - 1
@@ -124,6 +134,12 @@ async def process_setback(callback: CallbackQuery) -> None:
 
 @router.callback_query(F.data.startswith('setcategory'))
 async def process_setcategory(callback: CallbackQuery, state: FSMContext) -> None:
+    """
+    Выбор категории для созданной заявки
+    :param callback:
+    :param state:
+    :return:
+    """
     logging.info(f'process_setcategory: {callback.message.chat.id}')
     user_dict[callback.message.chat.id] = await state.get_data()
     description_order = user_dict[callback.message.chat.id]['description_order']
@@ -132,7 +148,6 @@ async def process_setcategory(callback: CallbackQuery, state: FSMContext) -> Non
     await state.update_data(title_category=int(callback.data.split('_')[1]))
     await state.set_state(default_state)
     list_order = get_list_order()
-    print(list_order)
     if len(list_order) == 0:
         number_order = 1
     else:
@@ -193,6 +208,12 @@ async def order_mailer(callback: CallbackQuery, state: FSMContext, bot: Bot) -> 
 
 
 async def process_mailer(bot: Bot):
+    """
+    Рассылка заявки по списку пользователей
+    :param bot:
+    :return:
+    """
+    logging.info('process_mailer')
     # id INTEGER, telegram_id INTEGER, username TEXT, is_admin INTEGER, list_category TEXT, rating INTEGER
     # получаем список пользователей для рассылки
     #             id INTEGER PRIMARY KEY,
@@ -204,11 +225,11 @@ async def process_mailer(bot: Bot):
     list_mailer = get_list_users()
     # сортируем его по рейтингу
     list_sorted_user = sorted(list_mailer, key=lambda mailer: mailer[5], reverse=True)
-    print(list_sorted_user)
-    # получаем список заявок
+    # получаем список заявок c конца
     list_order = get_list_order()[::-1]
     # 1 - проходим по списку заявок
     for order in list_order:
+        print(232, order)
         # если заявка находится на стадии досыльных сообщений пользователю то не запускаем рассылку
         if order[7] == 'one_minute':
             continue
@@ -225,7 +246,6 @@ async def process_mailer(bot: Bot):
         #             amount INTEGER,
         #             report TEXT
         info_order = get_order_id(id_order=order[0])
-        print(info_order)
         current_date = datetime.now().strftime('%d/%m/%Y')
         list_current_date = list(map(int, current_date.split('/')))
         current_date = date(list_current_date[2], list_current_date[1], list_current_date[0])
@@ -233,7 +253,6 @@ async def process_mailer(bot: Bot):
         date_order = date(list_date_order[2], list_date_order[1], list_date_order[0])
         # если исполнитель еще не определен и заявке не более суток
         if info_order[8] == 0 and current_date == date_order:
-            print("info_order:", info_order)
             # получаем список пользователей кому уже была произведена рассылка
             mailer_order = order[6]
             if mailer_order == 'none':
@@ -247,7 +266,6 @@ async def process_mailer(bot: Bot):
             for user in list_sorted_user:
                 # проверяем количество заявок в работе и что получатель не супер-админ
                 list_order_id_not_complete = get_list_order_id_not_complete(id_user=user[1])
-                print("list_order_id_not_complete", list_order_id_not_complete)
                 list_super_admin = config.tg_bot.admin_ids.split(',')
                 result = get_telegram_user(user_id=user[1], bot_token=config.tg_bot.token)
                 if len(list_order_id_not_complete) >= 5 or\
@@ -256,7 +274,6 @@ async def process_mailer(bot: Bot):
                         user[1] == order[2]:
                     # print(len(list_order_id_not_complete) >= 2, user[1] in map(int, list_super_admin))
                     continue
-                print("user", user, "order", order, user[1] == order[1])
                 # получаем допустимые категории для пользователя
                 categorys = user[4]
                 if categorys == '0':
@@ -266,7 +283,7 @@ async def process_mailer(bot: Bot):
                         category_list = list(map(int, categorys.split(',')))
                     else:
                         category_list = [int(categorys)]
-                print(f'user[0]: {user[0]} mailer_list: {mailer_list} order[4]: {order[5]} category_list: {category_list}\n\n')
+                # print(f'user[0]: {user[0]} mailer_list: {mailer_list} order[4]: {order[5]} category_list: {category_list}\n\n')
                 # если пользователю еще не рассылали заявку и список его категорий допустим
                 if user[0] not in mailer_list and order[5] in category_list:
 
@@ -537,13 +554,22 @@ async def getorder_confirm(callback: CallbackQuery, bot: Bot) -> None:
 
 @router.callback_query(F.data.startswith('contract'))
 async def getorder_contract(callback: CallbackQuery, bot: Bot) -> None:
+    """
+    Подтверждение того что пользователь Договорился или НЕ Договорился
+    :param callback:
+    :param bot:
+    :return:
+    """
     logging.info(f'getorder_contract: {callback.message.chat.id}')
+    # ответ пользователя
     contract = callback.data.split('_')
+    # на какой заказ ответил пользователь
     id_order = int(contract[2])
+    # если пользователь не договорился
     if contract[1] == 'cancel':
         # # обновляем статус
-        # set_status_order(id_order=id_order,
-        #                  status='not_contract')
+        set_status_order(id_order=id_order,
+                         status='not_contract')
         # # обнуляем исполнителя
         # set_user_order(id_order=id_order,
         #                id_user=0)
@@ -558,7 +584,7 @@ async def getorder_contract(callback: CallbackQuery, bot: Bot) -> None:
                 info_user = get_info_user(telegram_id=callback.message.chat.id)
                 await bot.send_message(chat_id=int(id_superadmin),
                                        text=f'Пользователь {callback.from_user.username} (тел: {info_user[-1]}) не договорился по'
-                                            f' заявке № {id_order}. Пользователь ожидает ваше решение.\n\n'
+                                            f' заявке № {id_order}.\n\n'
                                             f'Номер телефона мастера {callback.from_user.username}:'
                                             f' {get_info_user(callback.message.chat.id)[-1]}\n'
                                             f'Информация о заявке № {id_order}:\n'
@@ -569,21 +595,25 @@ async def getorder_contract(callback: CallbackQuery, bot: Bot) -> None:
                                             f'Категория заявки: {info_order[5]}\n'
                                             f'Статус заявки: {info_order[7]}\n'
                                             f'Исполнитель заявки: @{get_info_user(info_order[8])[2]}-{get_info_user(info_order[8])[1]}\n'
-                                            f'Стоимость заявки: {info_order[9]}',
-                                       reply_markup=keyboard_reassert_contract(id_order=id_order,
-                                                                               id_telegram=callback.message.chat.id,
-                                                                               message_id=callback.message.message_id))
-
+                                            f'Стоимость заявки: {info_order[9]}\n\n'
+                                            f'Заявка запущена на рассылку')
+                                       # reply_markup=keyboard_reassert_contract(id_order=id_order,
+                                       #                                         id_telegram=callback.message.chat.id,
+                                       #                                         message_id=callback.message.message_id))
+        # производим рассылку создателю заявки
         result = get_telegram_user(user_id=info_order[2],
                                    bot_token=config.tg_bot.token)
         if 'result' in result and info_order[2] not in map(int, list_super_admin):
             await bot.send_message(chat_id=info_order[2],
                                    text=f'Пользователь {callback.from_user.username} не договорился по'
                                         f' заявке № {id_order}.')
-        # await bot.delete_message(chat_id=callback.message.chat.id,
-        #                          message_id=callback.message.message_id)
-        # await process_mailer(bot=bot)
-        await callback.message.answer(text=f"Информация передана администратору, ожидайте его решение")
+        await bot.delete_message(chat_id=callback.message.chat.id,
+                                 message_id=callback.message.message_id)
+        # удаляем исполнителя заказа
+        set_user_order(id_order=id_order,
+                       id_user=0)
+        await process_mailer(bot=bot)
+        await callback.message.answer(text=f"Заявка снята с вас и передана другим мастерам")
 
     elif contract[1] == 'confirm':
         # обновляем статус
@@ -615,13 +645,16 @@ async def getorder_contract(callback: CallbackQuery, bot: Bot) -> None:
         result = get_telegram_user(user_id=info_order[2],
                                    bot_token=config.tg_bot.token)
         if 'result' in result and info_order[2] not in map(int, list_super_admin):
-            await bot.send_message(chat_id=info_order[2],
-                                   text=f'Пользователь {callback.from_user.username} договорился по'
-                                        f' заявке № {id_order}.')
+            try:
+                await bot.send_message(chat_id=info_order[2],
+                                       text=f'Пользователь {callback.from_user.username} договорился по'
+                                            f' заявке № {id_order}.')
+            except:
+                pass
         await bot.delete_message(chat_id=callback.message.chat.id,
                                  message_id=callback.message.message_id)
         await callback.message.answer(text=f'Для внесения информации о ходе выполнения заявки и для ее закрытия'
-                                           f' воспользуйтесь кнопкой "Заявки" в главном меню',)
+                                           f' воспользуйтесь кнопкой "Заявки" в главном меню')
 
 
 @router.callback_query(F.data.startswith('reassert'))
@@ -630,7 +663,6 @@ async def process_reassert(callback: CallbackQuery, bot: Bot) -> None:
     info_callback = callback.data.split('_')
     print(callback.data)
     if "cancel" in info_callback[0]:
-        print("cancel")
         # обновляем статус
         set_status_order(id_order=int(info_callback[1]),
                          status='not_contract')

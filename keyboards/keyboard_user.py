@@ -16,9 +16,16 @@ def keyboards_user() -> ReplyKeyboardMarkup:
     return keyboard
 
 
-
-
 def keyboards_create_list_category(list_category: list, back: int, forward: int, count: int):
+    """
+    Формируем клавиатуру с кнопками пагинации со списком категорий и указанием в виде эмодзи ❌ и ✅
+     если категория выбрана пользователем
+    :param list_category: список категорий с флагом принадлежности list(list(id: int,name_category: str, flag: bool)
+    :param back: номер блока для перехода назад при помощи кнопок пагинации
+    :param forward: номер блока для перехода вперед при помощи кнопок пагинации
+    :param count: количество кнопок в списке категорий
+    :return:
+    """
     logging.info("keyboards_create_list_category")
     # считаем сколько всего блоков по заданному количество элементов в блоке
     count_users = len(list_category)
@@ -80,15 +87,16 @@ def keyboard_confirm_list_category() -> None:
     )
     return keyboard
 
+
 def keyboards_get_contact() -> ReplyKeyboardMarkup:
     logging.info("keyboards_get_contact")
     button_1 = KeyboardButton(text='Отправить свой контакт ☎️', request_contact=True)
-    button_2 = KeyboardButton(text='Отмена')
     keyboard = ReplyKeyboardMarkup(
         keyboard=[[button_1]],
         resize_keyboard=True
     )
     return keyboard
+
 
 def keyboard_confirm_phone() -> None:
     logging.info("keyboard_confirm_phone")

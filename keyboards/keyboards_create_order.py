@@ -5,7 +5,7 @@ import logging
 
 def keyboards_set_category(list_category: list, back: int, forward: int, count: int):
     """
-    КАТЕГОРИЯ -> Указать категорию для созданной заявки
+    Клавиатура для выбора категории создаваемой заявки
     :param list_category: список категорий
     :param back:
     :param forward:

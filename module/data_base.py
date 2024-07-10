@@ -53,7 +53,7 @@ def add_admin(id_admin: int, user_name: str) -> None:
 # MAIN - добавление супер-админа в таблицу users
 def add_user(id_user: int, user_name: str) -> None:
     """
-    Добавление супер-админа в таблицу пользователей
+    Добавление пользователя в таблицу Users
     :param id_user: id_telegram пользователя
     :param user_name: имя пользователя в телеграм
     :return:
@@ -86,7 +86,7 @@ def get_list_notadmins() -> list:
 
 def get_list_users() -> list:
     """
-    Получить список верифицированных пользователей не являющихся администратором
+    Получить список пользователей
     :return:
     """
     logging.info(f'get_list_users')
@@ -196,22 +196,22 @@ def get_user(telegram_id: int):
 # # ПОЛЬЗОВАТЕЛЬ - данные пользователя по его id телеграмм
 def get_info_user(telegram_id: int):
     """
-    ПОЛЬЗОВАТЕЛЬ - имя пользователя по его id
-    :param telegram_id:
+    Получаем всю информацию из таблицы Users по пользователя по его id телеграмм
+    :param telegram_id: id ntktuhfv gjkmpjdfntkz
     :return:
     """
-    logging.info(f'get_user')
+    logging.info(f'get_info_user')
     with db:
         sql = db.cursor()
         return sql.execute('SELECT * FROM users WHERE telegram_id = ?', (telegram_id,)).fetchone()
 
 
 # ПОЛЬЗОВАТЕЛЬ - получить список категорий
-def get_select(telegram_id: int):
+def get_select(telegram_id: int) -> str:
     """
-    Получаем флаг пользователя в команде
-    :param telegram_id:
-    :return:
+    Получаем список id категорий пользователя, по которым он желает получать заявки
+    :param telegram_id: id телеграм пользователя
+    :return: строка включающая в себя id категорий заявок через запятую
     """
     logging.info(f'set_select')
     with db:
@@ -223,7 +223,7 @@ def get_select(telegram_id: int):
 # ПОЛЬЗОВАТЕЛЬ - обновляем список категорий
 def set_select(list_category: str, telegram_id: int):
     """
-    Обновление списка категорий
+    Обновление списка категорий выбранных пользователем для получения заявок
     :param list_category: список категорий
     :param telegram_id:
     :return:
@@ -470,20 +470,6 @@ def set_comment_order(id_order: int, comment: str):
         db.commit()
 
 
-# def set_reating_order(id_user: int, reating: str):
-#     """
-#     Обновляем исполнителя заказа
-#     :param id_order:
-#     :param report:
-#     :return:
-#     """
-#     logging.info(f'set_report_order')
-#     with db:
-#         sql = db.cursor()
-#         sql.execute('UPDATE orders SET report = ? WHERE id = ?', (report, id_order,))
-#         db.commit()
-
-
 # СОЗДАНИЕ ТАБЛИЦ - category
 def create_table_category() -> None:
     """
@@ -517,8 +503,8 @@ def add_category(category: str) -> None:
 # КАТЕГОРИЯ - получение списка категорий
 def get_list_category() -> list:
     """
-    КАТЕГОРИЯ - получение списка категорий
-    :return: list(category:str)
+    Получение списка категорий
+    :return: list(id: int, name_category:str)
     """
     logging.info(f'get_list_category')
     with db:
@@ -545,195 +531,11 @@ def delete_category(category_id: int):
 # КАТЕГОРИЯ - получение названия категории ее id
 def get_title_category(id_category: int) -> list:
     """
-    КАТЕГОРИЯ - получение списка категорий
-    :return: list(category:str)
+    Получение название категории по id категории
+    :return: str
     """
     logging.info(f'get_list_category: {id_category}')
     with db:
         sql = db.cursor()
         sql.execute('SELECT * FROM category WHERE id = ?', (id_category,))
         return sql.fetchone()[1]
-
-#
-#
-#
-#
-#
-#
-#
-#
-#
-
-#
-#
-#
-#
-#
-# # ПОЛЬЗОВАТЕЛЬ - список пользователей верифицированных в боте
-# def get_list_users_filter() -> list:
-#     """
-#     ПОЛЬЗОВАТЕЛЬ - список пользователей верифицированных в боте
-#     :return: list(telegram_id:int, username:str)
-#     """
-#     logging.info(f'get_list_users_filter')
-#     with db:
-#         sql = db.cursor()
-#         sql.execute('SELECT telegram_id, username, in_command FROM users WHERE NOT username = ?'
-#                     ' ORDER BY id', ('username',))
-#         list_username = [row for row in sql.fetchall()]
-#         return list_username
-#
-#
-# # ПОЛЬЗОВАТЕЛЬ - информация о трененре
-# def get_info_coach(id_coach: int) -> tuple:
-#     """
-#     ПОЛЬЗОВАТЕЛЬ - список пользователей верифицированных в боте
-#     :return: list(telegram_id:int, username:str)
-#     """
-#     logging.info(f'get_list_users_filter')
-#     with db:
-#         sql = db.cursor()
-#         info_coach = sql.execute('SELECT telegram_id, username, in_command, in_game FROM users WHERE telegram_id = ?', (id_coach,)).fetchone()
-#
-#         return info_coach
-#
-#
-#
-#
-#
-# # ПОЛЬЗОВАТЕЛЬ - получение списка команды (заявка на игру)
-# def get_list_command(id_coach: int = None) -> list:
-#     """
-#     ИГРА - список команды
-#     :param id_coach: id_telegram тренера (админа)
-#     :return: list(telegram_id:int, username:str)
-#     """
-#     logging.info(f'get_list_users')
-#     with db:
-#         sql = db.cursor()
-#         sql.execute('SELECT telegram_id, username, in_game FROM users WHERE NOT username = ? AND coach = ?'
-#                     ' AND in_command = ? ORDER BY id', ('username', id_coach, 1))
-#         list_command = [row for row in sql.fetchall()]
-#         return list_command
-#
-#
-#
-#
-#
-
-#
-#
-#
-#
-#
-# # ПОЛЬЗОВАТЕЛЬ - Устанавливаем флаг добавления пользователя в розыгрыш
-# def set_game(in_game: int, telegram_id: int):
-#     """
-#     Устанавливаем флаг добавления пользователя в розыгрыш
-#     :param in_game: флаг розыгрыша
-#     :param telegram_id:
-#     :return:
-#     """
-#     logging.info(f'set_select')
-#     with db:
-#         sql = db.cursor()
-#         sql.execute('UPDATE users SET in_game = ? WHERE telegram_id = ?', (in_game, telegram_id))
-#         db.commit()
-#
-#
-# # ПОЛЬЗОВАТЕЛЬ - Получаем флаг состояния игрока в розыгрыше
-# def get_game(telegram_id: int):
-#     """
-#     Получаем флаг пользователя в розыгрыше
-#     :param telegram_id:
-#     :return:
-#     """
-#     logging.info(f'set_select')
-#     with db:
-#         sql = db.cursor()
-#         in_command = sql.execute('SELECT in_game FROM users WHERE telegram_id = ?', (telegram_id,)).fetchone()
-#         return in_command[0]
-#
-#
-#
-#
-#
-#
-#
-#
-# # ИГРА - Добавление игры в базу данных
-# def add_game(name_game: str, time_game: str, place_game: str, goal: int, goal_break: int, nogoal: int, turnover: int,
-#              stat_command: str, id_coach: int) -> None:
-#     """
-#     ИГРА - Добавление игры в базу данных
-#     :param name_game: название команд
-#     :param time_game: дата проведения игры
-#     :param place_game: место проведения игры
-#     :param goal: количество голов забитых из положения АТАКА
-#     :param goal_break: количество голов забитых из положение ЗАЩИТА
-#     :param nogoal: количество пропущенных голов
-#     :param turnover: количество совершенных turnover
-#     :param stat_command: словарь со статистикой игроков
-#     :param id_coach: id_telegram трененра
-#     :return:
-#     """
-#     logging.info(f'add_game')
-#     with db:
-#         sql = db.cursor()
-#         print(type(stat_command))
-#         sql.execute(f'INSERT INTO games (name_game, time_game, place_game, goal, goal_break, nogoal, turnover,'
-#                     f' stat_command, coach)'
-#                     f'VALUES ("{name_game}", "{time_game}", "{place_game}", {goal}, {goal_break}, {nogoal}, {turnover},'
-#                     f' "{stat_command}", {id_coach})')
-#         db.commit()
-#
-#
-# # СТАТИСТИКА - получить id_telegram тренера, который добавил игрока
-# def get_id_coach(id_player: int) -> int:
-#     """
-#     СТАТИСТИКА - получить id тренера
-#     :param id_player: id_telegram игрока
-#     :return: telegram_id:int
-#     """
-#     logging.info(f'get_list_users_filter')
-#     with db:
-#         sql = db.cursor()
-#         coach = sql.execute('SELECT coach FROM users WHERE telegram_id = ?', (id_player,)).fetchone()
-#
-#         return coach[0]
-#
-#
-# # СТАТИСТИКА - Получение списка проведенных игр тренера с id_telegram id_coach
-# def get_list_game(id_coach: int) -> list:
-#     """
-#     СТАТИСТИКА - список всех игр заведенных тренеров с id_telegram id_coach
-#     :param id_coach: id_telegram тренера
-#     :return: list(telegram_id:int, username:str)
-#     """
-#     logging.info(f'get_list_users_filter')
-#     with db:
-#         sql = db.cursor()
-#         sql.execute('SELECT * FROM games WHERE coach = ?'
-#                     ' ORDER BY id', (id_coach,))
-#         list_username = [row for row in sql.fetchall()]
-#         return list_username
-#
-#
-# # АДМИНИСТРАТОРЫ - Получить список верифицированных пользователей не являющихся администратором
-# def get_list_notadmins() -> list:
-#     """
-#     Получить список верифицированных пользователей не являющихся администратором
-#     :return:
-#     """
-#     logging.info(f'get_list_notadmins')
-#     with db:
-#         sql = db.cursor()
-#         sql.execute('SELECT telegram_id, username FROM users WHERE is_admin = ? AND NOT username = ?', (0, 'username'))
-#         list_notadmins = [row for row in sql.fetchall()]
-#         return list_notadmins
-#
-#
-
-#
-#
-

@@ -1,19 +1,19 @@
 from aiogram import Router, F, Bot
 from aiogram.types import Message, CallbackQuery, ReplyKeyboardRemove
 from aiogram.filters import CommandStart, or_f
+from aiogram.fsm.context import FSMContext
+from aiogram.filters import StateFilter
+from aiogram.fsm.state import State, StatesGroup, default_state
 
 from config_data.config import Config, load_config
 from module.data_base import create_table_users, create_table_category, add_user, get_list_category, get_select, \
     set_select, get_title_category, set_phone, get_info_user
 from keyboards.keyboard_user import keyboards_user, keyboards_create_list_category, keyboard_confirm_list_category, \
     keyboards_get_contact, keyboard_confirm_phone, keyboard_confirm_phone_1
+from filter.user_filter import filter_number_phone
 
-from aiogram.fsm.context import FSMContext
-from aiogram.filters import StateFilter
-from aiogram.fsm.state import State, StatesGroup, default_state
 
 import logging
-import re
 
 router = Router()
 user_dict = {}
@@ -22,16 +22,6 @@ config: Config = load_config()
 
 class User(StatesGroup):
     phone = State()
-
-def validate_russian_phone_number(phone_number):
-    # Паттерн для российских номеров телефона
-    # Российские номера могут начинаться с +7, 8, или без кода страны
-    pattern = re.compile(r'^(\+7|8|7)?(\d{10})$')
-
-    # Проверка соответствия паттерну
-    match = pattern.match(phone_number)
-
-    return bool(match)
 
 
 @router.message(CommandStart())
@@ -42,29 +32,42 @@ async def process_start_command_user(message: Message) -> None:
     :param message: 
     :return: 
     """
+    # создаем таблицы если не созданы
     create_table_users()
     create_table_category()
+    # добавляем пользователя в таблицу пользователей
     add_user(id_user=message.chat.id, user_name=message.from_user.username)
+    # отправляем сообщение
     await message.answer(text=f"Привет, {message.from_user.first_name} 👋\n"
                               f"Здесь можно получить  и создать заявку",
                          reply_markup=keyboards_user())
-
+    # получаем список id категорий, который выбрал пользователь для получения заявок по ним
     list_select_category = get_select(telegram_id=message.chat.id)
-
+    # если список еще не сформирован или категории не выбраны
     if list_select_category == "-" or len(list_select_category) == 0:
+        # создаем список для выбранных id категорий пользователя
         list_user = []
+    # иначе обрабатываем список
     else:
+        # если список состоит из нескольких id категорий разделенных запятой
         if ',' in list_select_category:
+            # формируем список
             list_user = [int(item) for item in list_select_category.split(',')]
+        # иначе помещаем единственную id категории в список
         else:
             list_user = [int(list_select_category)]
+    # создаем список категорий
     list_category = []
+    # проходим по всем категориям
     for item in get_list_category():
+        # item -> list(id: int, name_category:str)
+        # если id категории входит в список пользователя
         if item[0] in list_user:
+            # добавляем id категории, ее название и флаг принадлежности
             list_category.append([item[0], item[1], 1])
         else:
             list_category.append([item[0], item[1], 0])
-
+    # формируем клавиатуру с эмодзи в виде
     keyboard = keyboards_create_list_category(list_category=list_category,
                                               back=0,
                                               forward=2,
@@ -78,7 +81,7 @@ async def process_start_command_user(message: Message) -> None:
 @router.callback_query(F.data.startswith('categoryforward'))
 async def process_forward(callback: CallbackQuery) -> None:
     """
-    Действие на пагинацию, если в блоке недостаточно места для всех категорий
+    Действие на пагинацию вперед >>, если в блоке недостаточно места для всех категорий
     :param callback: callback.data.split('_')[1] номер блока для вывода списка категорий
     :return:
     """
@@ -114,10 +117,10 @@ async def process_forward(callback: CallbackQuery) -> None:
 
 
 # <<<<
-@router.callback_query(F.data.startswith('playerback'))
+@router.callback_query(F.data.startswith('categoryback'))
 async def process_back(callback: CallbackQuery) -> None:
     """
-    Действие на пагинацию, если в блоке недостаточно места для всех категорий
+    Действие на пагинацию назад <<, если в блоке недостаточно места для всех категорий
     :param callback: callback.data.split('_')[1] номер блока для вывода списка категорий
     :return:
     """
@@ -156,15 +159,17 @@ async def process_back(callback: CallbackQuery) -> None:
 @router.callback_query(F.data.startswith('selectcategory_'))
 async def process_select_category(callback: CallbackQuery) -> None:
     """
-    Перевод категорий в список пользователя,
+    Изменение id категорий в список пользователя,
     на клавиатуре при нажатии появляются эмодзи ❌ и ✅ для добавления и удаления из списка
     :param callback: callback.data.split('_')[1] содержит id категории заявки
     :return:
     """
     logging.info(f'process_select_player: {callback.message.chat.id}')
+    # получаем id выбранной категории
     category_id = int(callback.data.split('_')[1])
-
+    # получаем список id категорий пользователя
     list_select_category = get_select(telegram_id=callback.message.chat.id)
+    # обновляем значение списка id категорий пользователя и выводим обновленную клавиатуру
     if list_select_category == "0" or len(list_select_category) == 0:
         list_user = []
     else:
@@ -201,9 +206,9 @@ async def process_select_category(callback: CallbackQuery) -> None:
 
 
 @router.callback_query(F.data == 'create_list_user_category')
-async def process_create_command(callback: CallbackQuery) -> None:
+async def process_create_list_category(callback: CallbackQuery) -> None:
     """
-    Согласование состава команды на игру (заявки на игру)
+    Согласование списка выбранных категорий пользователем
     :param callback:
     :return:
     """
@@ -215,13 +220,9 @@ async def process_create_command(callback: CallbackQuery) -> None:
         if ',' in list_select_category:
             list_user = [int(item) for item in list_select_category.split(',')]
         else:
-            print(list_select_category)
             list_user = [int(list_select_category)]
-    list_category = get_list_category()
-
     text = f'<b>Список выбранных категорий:</b>\n'
     for i, id_category in enumerate(list_user):
-        print(id_category)
         title_category = get_title_category(id_category=id_category)
         text += f'{i+1}. {title_category}\n'
     await callback.message.edit_text(text=text,
@@ -232,9 +233,9 @@ async def process_create_command(callback: CallbackQuery) -> None:
 @router.callback_query(F.data == 'change_user_category')
 async def process_change_command(callback: CallbackQuery, bot: Bot) -> None:
     """
-    Изменение состава команды (заявки на игру)
+    Изменение списка категорий заявок пользователя
     :param callback:
-    :param state:
+    :param bot:
     :return:
     """
     logging.info(f'process_change_command: {callback.message.chat.id}')
@@ -265,9 +266,9 @@ async def process_change_command(callback: CallbackQuery, bot: Bot) -> None:
 
 
 @router.callback_query(F.data == 'confirm_user_category')
-async def process_confirm_command(callback: CallbackQuery, bot: Bot, state: FSMContext) -> None:
+async def process_confirm_user_category(callback: CallbackQuery, bot: Bot, state: FSMContext) -> None:
     """
-    Подтверждение создания состава команды (заявки на игру)
+    Подтверждение списка категорий заявок пользователя
     :param callback:
     :param bot:
     :return:
@@ -277,6 +278,7 @@ async def process_confirm_command(callback: CallbackQuery, bot: Bot, state: FSMC
                              message_id=callback.message.message_id)
     await callback.answer(text='Список категорий успешно помещен в базу', show_alert=True)
     list_info_user = get_info_user(telegram_id=callback.message.chat.id)
+    # если у пользователя не указан номер телефона просим его указать
     if list_info_user[-1] == "0":
         await callback.message.answer(
             text='Для получения выплат за размещенные вами заявки укажите номер телефона в поле ввода'
@@ -295,7 +297,7 @@ async def process_validate_russian_phone_number(message: Message, state: FSMCont
         phone = str(message.contact.phone_number)
     else:
         phone = message.text
-        if not validate_russian_phone_number(phone):
+        if not filter_number_phone(phone):
             await message.answer(text="Неверный формат номера. Повторите ввод, например 89991112222:")
             return
     await state.update_data(phone=phone)
@@ -326,7 +328,7 @@ async def process_confirm_phone_1(callback: CallbackQuery, bot: Bot) -> None:
 
 
 @router.callback_query(F.data == 'getphone_back')
-async def process_confirm_username(callback: CallbackQuery, bot: Bot, state: FSMContext) -> None:
+async def process_getphone_back(callback: CallbackQuery, bot: Bot, state: FSMContext) -> None:
     logging.info(f'process_confirm_username: {callback.message.chat.id}')
     await bot.delete_message(chat_id=callback.message.chat.id,
                              message_id=callback.message.message_id)

@@ -56,16 +56,18 @@ async def process_get_title_category(message: Message, state: FSMContext, bot: B
     #             list_category TEXT,
     #             rating INTEGER
     list_mailer_category = get_list_users()
-    print(list_mailer_category)
     list_super_admin = config.tg_bot.admin_ids.split(',')
     for user in list_mailer_category:
         if user[1] not in map(int, list_super_admin):
             result = get_telegram_user(user_id=user[1], bot_token=config.tg_bot.token)
             if 'result' in result:
-                await bot.send_message(chat_id=user[1],
-                                       text=f'Создана новая категория {message.text}\n'
-                                            f'Если желаете добавить ее в список категорий для получения заявок по ней,'
-                                            f' то нажмите /start или введите ее в поле ввода')
+                try:
+                    await bot.send_message(chat_id=user[1],
+                                           text=f'Создана новая категория {message.text}\n'
+                                                f'Если желаете добавить ее в список категорий для получения заявок по ней,'
+                                                f' то нажмите /start или введите ее в поле ввода')
+                except:
+                    pass
     await state.set_state(default_state)
 
 
@@ -135,8 +137,11 @@ async def process_deletecategory(callback: CallbackQuery, state: FSMContext) -> 
 @router.callback_query(F.data == 'notdel_category')
 async def process_notdel_category(callback: CallbackQuery, bot: Bot) -> None:
     logging.info(f'process_notdel_category: {callback.message.chat.id}')
-    await bot.delete_message(chat_id=callback.message.chat.id,
-                             message_id=callback.message.message_id)
+    try:
+        await bot.delete_message(chat_id=callback.message.chat.id,
+                                 message_id=callback.message.message_id)
+    except:
+        pass
     await process_category(callback.message)
 
 
@@ -146,7 +151,10 @@ async def process_del_category(callback: CallbackQuery, state: FSMContext, bot: 
     logging.info(f'process_del_category: {callback.message.chat.id}')
     user_dict[callback.message.chat.id] = await state.get_data()
     delete_category(category_id=(user_dict[callback.message.chat.id]["del_category_id"]))
-    await bot.delete_message(chat_id=callback.message.chat.id,
-                             message_id=callback.message.message_id)
+    try:
+        await bot.delete_message(chat_id=callback.message.chat.id,
+                                 message_id=callback.message.message_id)
+    except:
+        pass
     await callback.message.answer(text=f'Категория успешно удалена')
 

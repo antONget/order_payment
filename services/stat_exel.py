@@ -2,6 +2,11 @@ import pandas as pd
 
 
 def list_sales_to_exel(list_orders: list):
+    """
+    Формируем ексель файл
+    :param list_orders:
+    :return:
+    """
     dict_stat = {"№ п/п": [], "Дата": [], "Кем создана": [], "Описание": [], "Контакты": [], "Статус": [], "Исполнитель": [], "Стоимость": []}
     i = 0
     for order in list_orders:

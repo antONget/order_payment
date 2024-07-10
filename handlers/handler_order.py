@@ -123,7 +123,6 @@ async def process_simple_calendar_finish(callback: CallbackQuery, callback_data:
         await state.update_data(period_finish=data.strftime("%d/%m/%Y"))
         await state.set_state(default_state)
         # информация о пользователе
-        info_user = get_info_user(telegram_id=callback.message.chat.id)
         admin_list = list(map(int, config.tg_bot.admin_ids.split(',')))
         # если запрос делает админ
         if callback.message.chat.id in admin_list:
@@ -138,9 +137,7 @@ async def process_simple_calendar_finish(callback: CallbackQuery, callback_data:
         period_finish_str = user_dict[callback.message.chat.id]['period_finish']
         period_start_list = period_start_str.split('/')
         period_finish_list = period_finish_str.split('/')
-        # print(period_start_list, period_finish_list)
-        # test = date(2024, 5, 7)
-        # print(test)
+
         data_start = date(int(period_start_list[2]), int(period_start_list[1]), int(period_start_list[0]))
         data_finish = date(int(period_finish_list[2]), int(period_finish_list[1]), int(period_finish_list[0]))
         for order in list_order_id:
