@@ -7,11 +7,11 @@ from aiogram.filters.callback_data import CallbackData
 import aiogram_calendar
 
 from module.data_base import get_info_user, get_list_order_id, set_status_order, set_report_order, set_amount_order,\
-    get_order_id, get_list_order, set_comment_order, get_list_order_id_complete, set_rating
+    get_order_id, get_list_order, set_comment_order, get_list_order_id_complete, set_rating, set_user_order
 from keyboards.keyboard_order import keyboard_order_in_process, keyboard_order, keyboard_change_status_order, \
-    keyboard_payment, keyboard_comment, keyboard_confirm_screenshot
+    keyboard_payment, keyboard_comment, keyboard_confirm_screenshot, keyboard_reassert_contract
 from services.stat_exel import list_sales_to_exel
-from services.payments import create_payment, check_payment
+from handlers.handler_create_order import process_mailer
 
 from config_data.config import Config, load_config
 
@@ -227,7 +227,7 @@ async def process_order_change_status(callback: CallbackQuery, bot: Bot, state: 
             if 'result' in result:
                 await bot.send_message(chat_id=int(id_superadmin),
                                        text=f'Пользователь {callback.from_user.username} изменил статус'
-                                            f' заявки № {id_order} на "Согласовано время"\n\n'
+                                            f' заявки № {id_order} на "В работе"\n\n'
                                             f'Номер телефона мастера {callback.from_user.username}:'
                                             f' {get_info_user(callback.message.chat.id)[-1]}\n'
                                             f'Информация о заявке № {id_order}:\n'
@@ -245,29 +245,13 @@ async def process_order_change_status(callback: CallbackQuery, bot: Bot, state: 
         if 'result' in result and info_order[2] not in map(int, list_super_admin):
             await bot.send_message(chat_id=info_order[2],
                                    text=f'Пользователь {callback.from_user.username} изменил статус'
-                                        f' заявки № {id_order} на "Согласовано время"')
+                                        f' заявки № {id_order} на "В работе"')
         await bot.delete_message(chat_id=callback.message.chat.id,
                                  message_id=callback.message.message_id)
     elif change_status == 'comment':
-        # set_status_order(id_order=id_order, status=change_status)
         await callback.message.answer(text=f'Пришлите комментарий для заказа № {id_order}')
         await state.set_state(Tasks.comment)
-        # # производим рассылку супер админам
-        # list_super_admin = config.tg_bot.admin_ids.split(',')
-        # for id_superadmin in list_super_admin:
-        #     result = get_telegram_user(user_id=int(id_superadmin),
-        #                                bot_token=config.tg_bot.token)
-        #     if 'result' in result:
-        #         await bot.send_message(chat_id=int(id_superadmin),
-        #                                text=f'Пользователь {callback.from_user.username} изменил статус'
-        #                                     f' заявки № {id_order} на "На объекте"')
-        # info_order = get_order_id(id_order=id_order)
-        # result = get_telegram_user(user_id=info_order[2],
-        #                            bot_token=config.tg_bot.token)
-        # if 'result' in result and info_order[2] not in map(int, list_super_admin):
-        #     await bot.send_message(chat_id=info_order[2],
-        #                            text=f'Пользователь {callback.from_user.username} изменил статус'
-        #                                 f' заявки № {id_order} на "На объекте"')
+
     elif change_status == 'report':
         set_status_order(id_order=id_order, status='preview_report')
         await callback.message.answer(text=f'Пришлите краткий отчет о выполнении заказа № {id_order}')
@@ -455,58 +439,6 @@ async def process_get_amount_order(message: Message, bot: Bot, state: FSMContext
     await message.answer(text=f'Произведите оплату за полученную заявку № {id_order} в размере {price_amount} руб. '
                               f'на  карту 4893470444515362 ВТБ и пришлите боту скриншот об оплате')
     await state.set_state(Tasks.screenshot)
-#     PRICE = f'{price_amount}.00'
-#     payment_url, payment_id = create_payment(amount=PRICE, chat_id=message.chat.id)
-#     await message.answer(text=f'Произведите оплату за полученную заявку в размере {price_amount}',
-#                          reply_markup=keyboard_payment(payment_url=payment_url,
-#                                                        payment_id=payment_id))
-#     await state.set_state(default_state)
-#
-# @router.callback_query(F.data.startswith('payment'))
-# async def check_handler(callback: CallbackQuery, bot: Bot, state: FSMContext):
-#     logging.info(f'check_handler: {callback.message.chat.id}-{callback.data.split("_")[1]}')
-#     payment_id = callback.data.split('_')[1]
-#     result = check_payment(payment_id)
-#     if result == 'succeeded':
-#
-#         user_dict[callback.message.chat.id] = await state.get_data()
-#         id_order = user_dict[callback.message.chat.id]['report_id_order']
-#         set_status_order(id_order=id_order, status='complete')
-#         await callback.message.answer(text=f'Платеж проведен успешно!')
-#         list_super_admin = config.tg_bot.admin_ids.split(',')
-#         for id_superadmin in list_super_admin:
-#             result = get_telegram_user(user_id=int(id_superadmin),
-#                                        bot_token=config.tg_bot.token)
-#             if 'result' in result:
-#                 await bot.send_message(chat_id=int(id_superadmin),
-#                                        text=f'Платеж за заказ № {id_order} проведен успешно!')
-#         info_order = get_order_id(id_order=id_order)
-#         result = get_telegram_user(user_id=info_order[2],
-#                                    bot_token=config.tg_bot.token)
-#         if 'result' in result and info_order[2] not in map(int, list_super_admin):
-#             await bot.send_message(chat_id=info_order[2],
-#                                    text=f'Платеж за заказ № {id_order} проведен успешно!')
-#         info_user = get_info_user(telegram_id=callback.message.chat.id)
-#         #     id INTEGER PRIMARY KEY,
-#         #     time_order TEXT,
-#         #     id_creator INTEGER,
-#         #     description_order TEXT,
-#         #     contact_order TEXT,
-#         #     category INTEGER,
-#         #     mailer_order TEXT,
-#         #     status TEXT,
-#         #     id_user INTEGER,
-#         #     amount INTEGER,
-#         #     report TEXT,
-#         #     cancel_id TEXT,
-#         #     comment TEXT
-#         list_order_id_complete = get_list_order_id_complete(id_user=callback.message.chat.id)
-#         total_amount = 0
-#         for order in list_order_id_complete:
-#             total_amount += order[9]
-#         rating = total_amount // len(list_order_id_complete)
-#         set_rating(telegram_id=callback.message.chat.id, rating=rating)
-#         await callback.answer(text='Ваш рейтинг обновлен', show_alert=True)
 
 
 @router.message(StateFilter(Tasks.amount))
@@ -578,3 +510,87 @@ async def process_answer_admin_screenshot(callback: CallbackQuery, state: FSMCon
         if 'result' in result:
             await bot.send_message(chat_id=id_telegram_user,
                                    text='Ваш платеж отклонен')
+
+
+@router.callback_query(F.data.startswith('ordercontractcancel'))
+async def process_contractcancel(callback: CallbackQuery, bot: Bot) -> None:
+    """
+    Подтверждение того что пользователь НЕ договорился
+    :param callback:
+    :param bot:
+    :return:
+    """
+    logging.info(f'getorder_contract: {callback.message.chat.id}')
+    # ответ пользователя
+    contract = callback.data.split('_')
+    # на какой заказ ответил пользователь
+    id_order = int(contract[1])
+    # если пользователь не договорился
+    # # обновляем статус
+    set_status_order(id_order=id_order,
+                     status='not_contract')
+    # # обнуляем исполнителя
+    # set_user_order(id_order=id_order,
+    #                id_user=0)
+
+    # производим рассылку супер админам
+    list_super_admin = config.tg_bot.admin_ids.split(',')
+    info_order = get_order_id(id_order=id_order)
+    for id_superadmin in list_super_admin:
+        result = get_telegram_user(user_id=int(id_superadmin),
+                                   bot_token=config.tg_bot.token)
+        if 'result' in result:
+            info_user = get_info_user(telegram_id=callback.message.chat.id)
+            await bot.send_message(chat_id=int(id_superadmin),
+                                   text=f'Пользователь {callback.from_user.username} (тел: {info_user[-1]}) не договорился по'
+                                        f' заявке № {id_order}.\n\n'
+                                        f'Номер телефона мастера {callback.from_user.username}:'
+                                        f' {get_info_user(callback.message.chat.id)[-1]}\n'
+                                        f'Информация о заявке № {id_order}:\n'
+                                        f'Дата заявки: {info_order[1]}\n'
+                                        f'Создатель заявки: @{get_info_user(info_order[2])[2]}-{get_info_user(info_order[2])[1]}\n'
+                                        f'Описание заявки: {info_order[3]}\n'
+                                        f'Контакты клиента: {info_order[4]}\n'
+                                        f'Категория заявки: {info_order[5]}\n'
+                                        f'Статус заявки: {info_order[7]}\n'
+                                        f'Исполнитель заявки: @{get_info_user(info_order[8])[2]}-{get_info_user(info_order[8])[1]}\n'
+                                        f'Стоимость заявки: {info_order[9]}',
+                                   reply_markup=keyboard_reassert_contract(id_order=id_order,
+                                                                           id_telegram=callback.message.chat.id,
+                                                                           message_id=callback.message.message_id))
+    # производим рассылку создателю заявки
+    result = get_telegram_user(user_id=info_order[2],
+                               bot_token=config.tg_bot.token)
+    if 'result' in result and info_order[2] not in map(int, list_super_admin):
+        await bot.send_message(chat_id=info_order[2],
+                               text=f'Пользователь {callback.from_user.username} не договорился по'
+                                    f' заявке № {id_order}.')
+    await callback.message.answer(text=f"Ожидайте подтверждения от администратора")
+
+
+@router.callback_query(F.data.startswith('reassert'))
+async def process_reassert(callback: CallbackQuery, bot: Bot) -> None:
+    logging.info(f'process_reassert: {callback.message.chat.id}')
+    info_callback = callback.data.split('_')
+    print(callback.data)
+    if "cancel" in info_callback[0]:
+        # обновляем статус
+        set_status_order(id_order=int(info_callback[1]),
+                         status='not_contract')
+        # обнуляем исполнителя
+        set_user_order(id_order=int(info_callback[1]),
+                       id_user=0)
+        await bot.delete_message(chat_id=int(info_callback[2]),
+                                 message_id=int(info_callback[3]))
+        await bot.delete_message(chat_id=callback.message.chat.id,
+                                 message_id=callback.message.message_id)
+        await bot.send_message(chat_id=int(info_callback[2]),
+                               text='Информация подтверждена, заявка с вас снята')
+        await callback.answer(text='Информация подтверждена, заявка снята с пользователя, запущена новая рассылка!')
+        await process_mailer(bot=bot)
+    else:
+        await bot.send_message(chat_id=int(info_callback[2]),
+                               text='Информация не подтверждена')
+        await bot.delete_message(chat_id=callback.message.chat.id,
+                                 message_id=callback.message.message_id)
+        await callback.answer(text='Информация не подтверждена, заявка осталась у пользователя')

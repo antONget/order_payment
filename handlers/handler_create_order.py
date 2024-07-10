@@ -657,29 +657,29 @@ async def getorder_contract(callback: CallbackQuery, bot: Bot) -> None:
                                            f' воспользуйтесь кнопкой "Заявки" в главном меню')
 
 
-@router.callback_query(F.data.startswith('reassert'))
-async def process_reassert(callback: CallbackQuery, bot: Bot) -> None:
-    logging.info(f'process_reassert: {callback.message.chat.id}')
-    info_callback = callback.data.split('_')
-    print(callback.data)
-    if "cancel" in info_callback[0]:
-        # обновляем статус
-        set_status_order(id_order=int(info_callback[1]),
-                         status='not_contract')
-        # обнуляем исполнителя
-        set_user_order(id_order=int(info_callback[1]),
-                       id_user=0)
-        await bot.delete_message(chat_id=int(info_callback[2]),
-                                 message_id=int(info_callback[3]))
-        await bot.delete_message(chat_id=callback.message.chat.id,
-                                 message_id=callback.message.message_id)
-        await bot.send_message(chat_id=int(info_callback[2]),
-                               text='Информация подтверждена, заявка с вас снята')
-        await callback.answer(text='Информация подтверждена, заявка снята с пользователя')
-        await process_mailer(bot=bot)
-    else:
-        await bot.send_message(chat_id=int(info_callback[2]),
-                               text='Информация не подтверждена')
-        await bot.delete_message(chat_id=callback.message.chat.id,
-                                 message_id=callback.message.message_id)
-        await callback.answer(text='Информация не подтверждена, заявка осталась у пользователя')
+# @router.callback_query(F.data.startswith('reassert'))
+# async def process_reassert(callback: CallbackQuery, bot: Bot) -> None:
+#     logging.info(f'process_reassert: {callback.message.chat.id}')
+#     info_callback = callback.data.split('_')
+#     print(callback.data)
+#     if "cancel" in info_callback[0]:
+#         # обновляем статус
+#         set_status_order(id_order=int(info_callback[1]),
+#                          status='not_contract')
+#         # обнуляем исполнителя
+#         set_user_order(id_order=int(info_callback[1]),
+#                        id_user=0)
+#         await bot.delete_message(chat_id=int(info_callback[2]),
+#                                  message_id=int(info_callback[3]))
+#         await bot.delete_message(chat_id=callback.message.chat.id,
+#                                  message_id=callback.message.message_id)
+#         await bot.send_message(chat_id=int(info_callback[2]),
+#                                text='Информация подтверждена, заявка с вас снята')
+#         await callback.answer(text='Информация подтверждена, заявка снята с пользователя')
+#         await process_mailer(bot=bot)
+#     else:
+#         await bot.send_message(chat_id=int(info_callback[2]),
+#                                text='Информация не подтверждена')
+#         await bot.delete_message(chat_id=callback.message.chat.id,
+#                                  message_id=callback.message.message_id)
+#         await callback.answer(text='Информация не подтверждена, заявка осталась у пользователя')

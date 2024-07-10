@@ -89,6 +89,7 @@ def keyboard_contract(id_order: int) -> None:
     )
     return keyboard
 
+
 def keyboard_reassert_contract(id_order: int, id_telegram: int, message_id: int) -> None:
     logging.info("keyboard_get_order")
     button_1 = InlineKeyboardButton(text='Подтвердить',
