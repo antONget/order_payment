@@ -276,7 +276,7 @@ async def process_mailer(bot: Bot):
                     continue
                 # получаем допустимые категории для пользователя
                 categorys = user[4]
-                if categorys == '0':
+                if categorys == '0' or categorys in None:
                     category_list = []
                 else:
                     if ',' in categorys:
